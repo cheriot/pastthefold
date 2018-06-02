@@ -66,9 +66,55 @@ object api extends SbtModule {
     ivy"javax.servlet:javax.servlet-api:3.1.0"
   )
 
+  def gaeWar = T {
+    val task = T.task{ compileIvyDeps() ++ transitiveIvyDeps() }
+    val deps: Agg[PathRef] = resolveDeps(task)()
+    GaeWar.build(
+      T.ctx().dest,
+      millSourcePath,
+      compile().classes.path,
+      deps
+    )
+  }
+
   object test extends Tests {
     def ivyDeps = Agg(ivy"com.lihaoyi::utest:0.6.3")
 
     override def testFrameworks = Seq("utest.runner.Framework")
+  }
+}
+
+object GaeWar {
+  import ammonite.ops._
+
+  def build(
+             destPath: Path,
+             sourcePath: Path,
+             compiledClassesPath: Path,
+             deps: Agg[PathRef]
+           ): Unit = {
+
+    def mkPath(path: Path): Path = {
+      mkdir(path)
+      path
+    }
+
+    val exploded = mkPath(destPath / "exploded")
+    val webInf = mkPath(exploded / "WEB-INF")
+
+    // exploded/WEB-INF/web.xml
+    //                 /appengine-web.xml
+    //                 /classes/**/**.class
+    cp.into(sourcePath / "web.xml", webInf)
+    cp.into(sourcePath / "appengine-web.xml", webInf)
+    cp(compiledClassesPath, webInf / "classes")
+
+    // exploded/WEB-INF/lib/*.jar
+    var libPath = mkPath(webInf / "lib")
+    deps.map(pathRef =>
+      cp.into(pathRef.path, libPath)
+    )
+
+    // Static assets will be served from elsewhere, but could go in exploded/
   }
 }
