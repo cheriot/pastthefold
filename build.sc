@@ -1,7 +1,7 @@
 import mill._
 import mill.scalalib._
 
-object api extends SbtModule {
+object api extends SbtModule with GoogleAppEngine {
   def scalaVersion = "2.12.4"
 
   // Consider https://github.com/DavidGregory084/sbt-tpolecat/blob/master/src/main/scala/io/github/davidgregory084/TpolecatPlugin.scala
@@ -54,28 +54,22 @@ object api extends SbtModule {
     "-Ywarn-value-discard"               // Warn when non-Unit expression results are unused.
   )
 
-  val http4sVersion = "0.18.11"
+  // App Engine Standard needs a blocking servlet, which is not in the Http4s stable release. This snapshot is built
+  // locally (ie it's not in remote repos).
+  val http4sVersion = "1.0.0-SNAPSHOT"
+  val catsVersion = "1.0.1"
   override def ivyDeps = Agg(
-    ivy"org.http4s::http4s-blaze-server:${http4sVersion}",
-    ivy"org.http4s::http4s-circe:${http4sVersion}",
-    ivy"org.http4s::http4s-dsl:${http4sVersion}",
-    ivy"org.http4s::http4s-servlet:${http4sVersion}",
+    ivy"org.http4s::http4s-blaze-server:$http4sVersion",
+    ivy"org.http4s::http4s-circe:$http4sVersion",
+    ivy"org.http4s::http4s-dsl:$http4sVersion",
+    ivy"org.http4s::http4s-servlet:$http4sVersion",
+    ivy"org.typelevel::cats-core:$catsVersion",
+    ivy"org.typelevel::cats-effect:0.10.1",
     ivy"ch.qos.logback:logback-classic:1.2.3",
     ivy"com.google.appengine:appengine-api-1.0-sdk:1.9.53",
     // The most recent version supported by App Engine Standard.
     ivy"javax.servlet:javax.servlet-api:3.1.0"
   )
-
-  def gaeWar = T {
-    val task = T.task{ compileIvyDeps() ++ transitiveIvyDeps() }
-    val deps: Agg[PathRef] = resolveDeps(task)()
-    GaeWar.build(
-      T.ctx().dest,
-      millSourcePath,
-      compile().classes.path,
-      deps
-    )
-  }
 
   object test extends Tests {
     def ivyDeps = Agg(ivy"com.lihaoyi::utest:0.6.3")
@@ -84,7 +78,21 @@ object api extends SbtModule {
   }
 }
 
-object GaeWar {
+trait GoogleAppEngine extends JavaModule {
+  def gaeWar = T {
+    val deps: Agg[PathRef] = resolveDeps(T.task{ compileIvyDeps() ++ transitiveIvyDeps() })()
+    GoogleAppEngine.build(
+      T.ctx().dest,
+      millSourcePath,
+      compile().classes.path,
+      deps
+    )
+  }
+
+  // TODO def gaeDeploy
+}
+
+object GoogleAppEngine {
   import ammonite.ops._
 
   def build(
