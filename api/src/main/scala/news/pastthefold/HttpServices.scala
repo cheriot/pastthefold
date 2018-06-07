@@ -18,6 +18,7 @@ import org.http4s.dsl.io._
 import org.http4s.server.blaze._
 import org.http4s.circe._
 import io.circe.optics.JsonPath._
+import org.http4s.util.CaseInsensitiveString
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -42,26 +43,23 @@ object HttpServices {
     case req @ DELETE -> Root / "subscription" / articleId => ???
   }
 
-  val newsRoomService = HttpService[IO] {
-    case request @ POST -> Root  =>
-      request.as[Json].flatMap { body =>
-        val query = root.query.string.getOption(body)
-        val operationName = root.operationName.string.getOption(body)
-        val variablesStr = root.variables.string.getOption(body)
-
-        def execute = query.map(QueryParser.parse(_)) match {
-          case Some(Success(ast)) ⇒
-            variablesStr.map(parse) match {
-              case Some(Left(error)) ⇒ Future.successful(BadRequest(formatError(error)))
-              case Some(Right(json)) ⇒ executeGraphQL(ast, operationName, json)
-              case None ⇒ executeGraphQL(ast, operationName, root.variables.json.getOption(body) getOrElse Json.obj())
-            }
-          case Some(Failure(error)) ⇒ Future.successful(BadRequest(formatError(error)))
-          case None ⇒ Future.successful(BadRequest(formatError("No query to execute")))
-        }
-
-        IO.fromFuture(IO(execute)).flatten
+  import org.http4s.headers.`Content-Type`
+  object OptionalQueryParamMatcher extends OptionalQueryParamDecoderMatcher[String]("query")
+  // Extend to fully implement https://graphql.org/learn/serving-over-http/#http-methods-headers-and-body
+  val graphQLService = HttpService[IO] {
+    case request @ GET -> Root :? OptionalQueryParamMatcher(maybeQuery) => {
+      val contentType = request.headers.get(`Content-Type`).map(_.value)
+      (contentType, maybeQuery) match {
+        case (Some("text/html"), _) => NotImplemented("Still need to generate that schema file.") // TODO schema
+        case (Some("application/json"), Some(query)) => IO.fromFuture(IO(runGraphQL(query))).flatten
+        case _ => BadRequest("Check your content-type and query param.")
       }
+    }
+    case request @ POST -> Root if request.headers.get(`Content-Type`).map(_.value).filter(_ == "application/json").isDefined =>
+      request.as[Json].flatMap { body =>
+        IO.fromFuture(IO(runGraphQL(body))).flatten
+      }
+    case _ => BadRequest("Invalid GraphQL query.")
   }
 
   def formatError(error: Throwable): Json = error match {
@@ -80,6 +78,29 @@ object HttpServices {
 
   def formatError(message: String): Json =
     Json.obj("errors" → Json.arr(Json.obj("message" → Json.fromString(message))))
+
+  def runGraphQL(queryStr: String): Future[IO[Response[IO]]]  =
+    parse(queryStr) match {
+      case Right(json: Json) => runGraphQL(json)
+      case Left(parsingFailure) => Future.successful(BadRequest("Error json parsing query."))
+    }
+
+  def runGraphQL(body: Json): Future[IO[Response[IO]]] ={
+    val query = root.query.string.getOption(body)
+    val operationName = root.operationName.string.getOption(body)
+    val variablesStr = root.variables.string.getOption(body)
+
+    query.map(QueryParser.parse(_)) match {
+      case Some(Success(ast)) ⇒
+        variablesStr.map(parse) match {
+          case Some(Left(error)) ⇒ Future.successful(BadRequest(formatError(error)))
+          case Some(Right(json)) ⇒ executeGraphQL(ast, operationName, json)
+          case None ⇒ executeGraphQL(ast, operationName, root.variables.json.getOption(body) getOrElse Json.obj())
+        }
+      case Some(Failure(error)) ⇒ Future.successful(BadRequest(formatError(error)))
+      case None ⇒ Future.successful(BadRequest(formatError("No query to execute")))
+    }
+  }
 
   def executeGraphQL(query: Document, operationName: Option[String], variables: Json) =
     GraphQLUtil.executeGraphQL(query, operationName, variables)

@@ -19,6 +19,6 @@ object Main extends StreamApp[IO] {
     BlazeBuilder[IO]
       .bindHttp(9090, "localhost")
       .mountService(helloWorldService, "/")
-      .mountService(newsRoomService, "/graphql")
+      .mountService(graphQLService, "/graphql")
       .serve
 }
