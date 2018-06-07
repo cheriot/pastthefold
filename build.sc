@@ -57,14 +57,23 @@ object api extends SbtModule with GoogleAppEngine {
   // App Engine Standard needs a blocking servlet, which is not in the Http4s stable release. This snapshot is built
   // locally (ie it's not in remote repos).
   val http4sVersion = "1.0.0-SNAPSHOT"
+  val circeVersion = "0.9.3"
   val catsVersion = "1.0.1"
   override def ivyDeps = Agg(
     ivy"org.http4s::http4s-blaze-server:$http4sVersion",
     ivy"org.http4s::http4s-circe:$http4sVersion",
     ivy"org.http4s::http4s-dsl:$http4sVersion",
     ivy"org.http4s::http4s-servlet:$http4sVersion",
+
+    ivy"io.circe::circe-generic:$circeVersion",
+    ivy"io.circe::circe-optics:$circeVersion",
+
     ivy"org.typelevel::cats-core:$catsVersion",
     ivy"org.typelevel::cats-effect:0.10.1",
+
+    ivy"org.sangria-graphql::sangria:1.4.1",
+    ivy"org.sangria-graphql::sangria-circe:1.2.1",
+
     ivy"ch.qos.logback:logback-classic:1.2.3",
     ivy"com.google.appengine:appengine-api-1.0-sdk:1.9.53",
     // The most recent version supported by App Engine Standard.
@@ -72,7 +81,7 @@ object api extends SbtModule with GoogleAppEngine {
   )
 
   object test extends Tests {
-    def ivyDeps = Agg(ivy"com.lihaoyi::utest:0.6.3")
+    override def ivyDeps = Agg(ivy"com.lihaoyi::utest:0.6.3")
 
     override def testFrameworks = Seq("utest.runner.Framework")
   }

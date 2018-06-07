@@ -17,8 +17,8 @@ object Main extends StreamApp[IO] {
 
   override def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, ExitCode] =
     BlazeBuilder[IO]
-      .bindHttp(8080, "localhost")
+      .bindHttp(9090, "localhost")
       .mountService(helloWorldService, "/")
-      // .mountService(services, "/api")
+      .mountService(newsRoomService, "/graphql")
       .serve
 }
