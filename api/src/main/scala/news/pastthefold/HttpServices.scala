@@ -28,6 +28,7 @@ import sangria.execution.{ErrorWithResolver, QueryAnalysisError}
 import sangria.parser.{QueryParser, SyntaxError}
 import sangria.marshalling.circe._
 
+import scala.io.Source
 import scala.util.{Failure, Success}
 
 object HttpServices {
@@ -44,16 +45,26 @@ object HttpServices {
   }
 
   import org.http4s.headers.`Content-Type`
+  import org.http4s.headers.Accept
   object OptionalQueryParamMatcher extends OptionalQueryParamDecoderMatcher[String]("query")
-  // Extend to fully implement https://graphql.org/learn/serving-over-http/#http-methods-headers-and-body
+
+  /** Extend to fully implement https://graphql.org/learn/serving-over-http/#http-methods-headers-and-body */
   val graphQLService = HttpService[IO] {
     case request @ GET -> Root :? OptionalQueryParamMatcher(maybeQuery) => {
-      val contentType = request.headers.get(`Content-Type`).map(_.value)
-      (contentType, maybeQuery) match {
-        case (Some("text/html"), _) => NotImplemented("Still need to generate that schema file.") // TODO schema
-        case (Some("application/json"), Some(query)) => IO.fromFuture(IO(runGraphQL(query))).flatten
-        case _ => BadRequest("Check your content-type and query param.")
-      }
+
+      def requestAccepts(str: String) =
+        request.headers
+          .get(Accept)
+          .map(_.value)
+          .filter(_.contains(str))
+          .isDefined
+
+      if (requestAccepts("text/html"))
+        StaticFile.fromResource("/graphiql.html", Some(request))
+          .getOrElseF(NotFound("Can't find the graphiql html."))
+      else if (requestAccepts("application/json") && maybeQuery.isDefined)
+        IO.fromFuture(IO(runGraphQL(maybeQuery.get))).flatten
+      else BadRequest("Check your accept header and query param.")
     }
     case request @ POST -> Root if request.headers.get(`Content-Type`).map(_.value).filter(_ == "application/json").isDefined =>
       request.as[Json].flatMap { body =>
