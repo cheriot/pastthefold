@@ -6,7 +6,7 @@ import org.http4s.server._
 import org.http4s.servlet.{BlockingHttp4sServlet, BlockingServletIo}
 
 class Servlet extends BlockingHttp4sServlet[IO](
-  helloWorldService,
+  allHttpServices,
   BlockingServletIo(Servlet.DefaultChunkSize),
   DefaultServiceErrorHandler
 )
