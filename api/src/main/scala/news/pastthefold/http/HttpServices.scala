@@ -1,8 +1,9 @@
-package news.pastthefold
+package news.pastthefold.http
 
 import cats.effect._
 import cats.implicits._
 import io.circe.Json
+import news.pastthefold.graphql.GraphQLExecutor
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.io._
@@ -47,8 +48,6 @@ object HttpServices {
 
     case (GET | POST) -> Root / "graphql" => BadRequest("Invalid GraphQL query.")
   }
-
-  import cats.implicits._
   val allHttpServices = helloWorldHttpService combineK graphQLHttpService
 
 

@@ -1,7 +1,7 @@
-package news.pastthefold
+package news.pastthefold.http
 
 import cats.effect._
-import news.pastthefold.HttpServices._
+import news.pastthefold.http.HttpServices._
 import org.http4s.server._
 import org.http4s.servlet.{BlockingHttp4sServlet, BlockingServletIo}
 

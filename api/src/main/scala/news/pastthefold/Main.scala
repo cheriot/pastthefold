@@ -3,7 +3,7 @@ package news.pastthefold
 import cats.effect._
 import fs2.StreamApp.ExitCode
 import fs2.{Stream, StreamApp}
-import news.pastthefold.HttpServices._
+import news.pastthefold.http.HttpServices._
 import org.http4s.server.blaze._
 
 import scala.concurrent.ExecutionContext.Implicits.global

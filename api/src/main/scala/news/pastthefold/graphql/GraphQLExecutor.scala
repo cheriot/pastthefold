@@ -1,4 +1,4 @@
-package news.pastthefold
+package news.pastthefold.graphql
 
 import cats.effect._
 import io.circe.Json
@@ -6,6 +6,7 @@ import io.circe.generic.auto._
 import io.circe.jawn._
 import io.circe.optics.JsonPath._
 import io.circe.syntax._
+import news.pastthefold.dao.CharacterRepo
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.io._

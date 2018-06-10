@@ -1,5 +1,6 @@
-package news.pastthefold
+package news.pastthefold.graphql
 
+import news.pastthefold.dao._
 import sangria.execution.deferred.{Fetcher, HasId}
 import sangria.schema._
 
@@ -21,13 +22,16 @@ object SchemaDefinition {
     "Episode",
     Some("One of the films in the Star Wars Trilogy"),
     List(
-      EnumValue("NEWHOPE",
+      EnumValue(
+        "NEWHOPE",
         value = Episode.NEWHOPE,
         description = Some("Released in 1977.")),
-      EnumValue("EMPIRE",
+      EnumValue(
+        "EMPIRE",
         value = Episode.EMPIRE,
         description = Some("Released in 1980.")),
-      EnumValue("JEDI",
+      EnumValue(
+        "JEDI",
         value = Episode.JEDI,
         description = Some("Released in 1983."))))
 
@@ -36,16 +40,24 @@ object SchemaDefinition {
       "Character",
       "A character in the Star Wars Trilogy",
       () ⇒ fields[CharacterRepo, Character](
-        Field("id", StringType,
+        Field(
+          "id",
+          StringType,
           Some("The id of the character."),
           resolve = _.value.id),
-        Field("name", OptionType(StringType),
+        Field(
+          "name",
+          OptionType(StringType),
           Some("The name of the character."),
           resolve = _.value.name),
-        Field("friends", ListType(Character),
+        Field(
+          "friends",
+          ListType(Character),
           Some("The friends of the character, or an empty list if they have none."),
           resolve = ctx ⇒ characters.deferSeqOpt(ctx.value.friends)),
-        Field("appearsIn", OptionType(ListType(OptionType(EpisodeEnum))),
+        Field(
+          "appearsIn",
+          OptionType(ListType(OptionType(EpisodeEnum))),
           Some("Which movies they appear in."),
           resolve = _.value.appearsIn map (e ⇒ Some(e)))
       ))
@@ -56,19 +68,29 @@ object SchemaDefinition {
       "A humanoid creature in the Star Wars universe.",
       interfaces[CharacterRepo, Human](Character),
       fields[CharacterRepo, Human](
-        Field("id", StringType,
+        Field(
+          "id",
+          StringType,
           Some("The id of the human."),
           resolve = _.value.id),
-        Field("name", OptionType(StringType),
+        Field(
+          "name",
+          OptionType(StringType),
           Some("The name of the human."),
           resolve = _.value.name),
-        Field("friends", ListType(Character),
+        Field(
+          "friends",
+          ListType(Character),
           Some("The friends of the human, or an empty list if they have none."),
           resolve = ctx ⇒ characters.deferSeqOpt(ctx.value.friends)),
-        Field("appearsIn", OptionType(ListType(OptionType(EpisodeEnum))),
+        Field(
+          "appearsIn",
+          OptionType(ListType(OptionType(EpisodeEnum))),
           Some("Which movies they appear in."),
           resolve = _.value.appearsIn map (e ⇒ Some(e))),
-        Field("homePlanet", OptionType(StringType),
+        Field(
+          "homePlanet",
+          OptionType(StringType),
           Some("The home planet of the human, or null if unknown."),
           resolve = _.value.homePlanet)
       ))
@@ -78,19 +100,29 @@ object SchemaDefinition {
     "A mechanical creature in the Star Wars universe.",
     interfaces[CharacterRepo, Droid](Character),
     fields[CharacterRepo, Droid](
-      Field("id", StringType,
+      Field(
+        "id",
+        StringType,
         Some("The id of the droid."),
         resolve = _.value.id),
-      Field("name", OptionType(StringType),
+      Field(
+        "name",
+        OptionType(StringType),
         Some("The name of the droid."),
         resolve = ctx ⇒ Future.successful(ctx.value.name)),
-      Field("friends", ListType(Character),
+      Field(
+        "friends",
+        ListType(Character),
         Some("The friends of the droid, or an empty list if they have none."),
         resolve = ctx ⇒ characters.deferSeqOpt(ctx.value.friends)),
-      Field("appearsIn", OptionType(ListType(OptionType(EpisodeEnum))),
+      Field(
+        "appearsIn",
+        OptionType(ListType(OptionType(EpisodeEnum))),
         Some("Which movies they appear in."),
         resolve = _.value.appearsIn map (e ⇒ Some(e))),
-      Field("primaryFunction", OptionType(StringType),
+      Field(
+        "primaryFunction",
+        OptionType(StringType),
         Some("The primary function of the droid."),
         resolve = _.value.primaryFunction)
     ))
@@ -105,20 +137,30 @@ object SchemaDefinition {
 
   val Query = ObjectType(
     "Query", fields[CharacterRepo, Unit](
-      Field("hero", Character,
+      Field(
+        "hero",
+        Character,
         arguments = EpisodeArg :: Nil,
         deprecationReason = Some("Use `human` or `droid` fields instead"),
         resolve = (ctx) ⇒ ctx.ctx.getHero(ctx.arg(EpisodeArg))),
-      Field("human", OptionType(Human),
+      Field(
+        "human",
+        OptionType(Human),
         arguments = ID :: Nil,
         resolve = ctx ⇒ ctx.ctx.getHuman(ctx arg ID)),
-      Field("droid", Droid,
+      Field(
+        "droid",
+        Droid,
         arguments = ID :: Nil,
         resolve = ctx ⇒ ctx.ctx.getDroid(ctx arg ID).get),
-      Field("humans", ListType(Human),
+      Field(
+        "humans",
+        ListType(Human),
         arguments = LimitArg :: OffsetArg :: Nil,
         resolve = ctx ⇒ ctx.ctx.getHumans(ctx arg LimitArg, ctx arg OffsetArg)),
-      Field("droids", ListType(Droid),
+      Field(
+        "droids",
+        ListType(Droid),
         arguments = LimitArg :: OffsetArg :: Nil,
         resolve = ctx ⇒ ctx.ctx.getDroids(ctx arg LimitArg, ctx arg OffsetArg))
     ))
