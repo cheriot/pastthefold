@@ -1,12 +1,25 @@
+import ammonite.ops._
 import mill._
 import mill.scalalib._
 
 object api extends SbtModule with GoogleAppEngine {
   def scalaVersion = "2.12.4"
 
+  /**
+    * Why is this not the same as?
+    * mill api.runMain "news.pastthefold.graphql.MainRenderSchema" /Users/cheriot/devspace/storyline/api/src/main/resources/graphql.schema
+    */
+  def graphQLSchema() = T.command {
+    val schemaPath: Path = millSourcePath / 'src / 'main / 'resources / "graphql.schema"
+    runMain("news.pastthefold.graphql.MainRenderSchema", schemaPath.toString)
+  }
+
+  /** Since there are multiple Main classes. Specify the one to use with `mill api.run` */
+  override def mainClass: T[Option[String]] = Some("news.pastthefold.Main")
+
   // Consider https://github.com/DavidGregory084/sbt-tpolecat/blob/master/src/main/scala/io/github/davidgregory084/TpolecatPlugin.scala
   // Steal the compiler flags list from better-files.
-  def scalacOptions = Seq(
+  override def scalacOptions = Seq(
     "-deprecation",                      // Emit warning and location for usages of deprecated APIs.
     "-encoding", "utf-8",                // Specify character encoding used by source files.
     "-explaintypes",                     // Explain type errors in more detail.
@@ -74,6 +87,7 @@ object api extends SbtModule with GoogleAppEngine {
     ivy"org.sangria-graphql::sangria:1.4.1",
     ivy"org.sangria-graphql::sangria-circe:1.2.1",
 
+    ivy"com.lihaoyi::ammonite-ops:1.1.2",
     ivy"ch.qos.logback:logback-classic:1.2.3",
     ivy"com.google.appengine:appengine-api-1.0-sdk:1.9.53",
     // The most recent version supported by App Engine Standard.
@@ -82,7 +96,6 @@ object api extends SbtModule with GoogleAppEngine {
 
   object test extends Tests {
     override def ivyDeps = Agg(ivy"com.lihaoyi::utest:0.6.3")
-
     override def testFrameworks = Seq("utest.runner.Framework")
   }
 }
@@ -102,7 +115,6 @@ trait GoogleAppEngine extends JavaModule {
 }
 
 object GoogleAppEngine {
-  import ammonite.ops._
 
   def build(
              destPath: Path,
