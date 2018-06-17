@@ -1,169 +1,196 @@
 package news.pastthefold.graphql
 
-import news.pastthefold.dao._
-import sangria.execution.deferred.{Fetcher, HasId}
+import news.pastthefold.dao.SubscriptionState.SubscriptionState
+import sangria.execution.deferred.{DeferredResolver, Fetcher, HasId}
 import sangria.schema._
+
+import cats._
+import cats.implicits._
+
+import scala.language.higherKinds
 
 import scala.concurrent.Future
 
-/**
- * Defines a GraphQL schema for the current project
- */
-object SchemaDefinition {
-  /**
-    * Resolves the lists of characters. These resolutions are batched and
-    * cached for the duration of a query.
-    */
-  val characters = Fetcher.caching(
-    (ctx: CharacterRepo, ids: Seq[String]) ⇒
-      Future.successful(ids.flatMap(id ⇒ ctx.getHuman(id) orElse ctx.getDroid(id))))(HasId(_.id))
 
-  val EpisodeEnum = EnumType(
-    "Episode",
-    Some("One of the films in the Star Wars Trilogy"),
-    List(
-      EnumValue(
-        "NEWHOPE",
-        value = Episode.NEWHOPE,
-        description = Some("Released in 1977.")),
-      EnumValue(
-        "EMPIRE",
-        value = Episode.EMPIRE,
-        description = Some("Released in 1980.")),
-      EnumValue(
-        "JEDI",
-        value = Episode.JEDI,
-        description = Some("Released in 1983."))))
+case class Storyline(id: String, slug: String, title: String, articleIds: List[String])
+case class Article(id: String, uri: String, title: String)
+object Article {
+  implicit val articleHasId = HasId[Article, String](_.id)
+}
+case class Subscription(id: String, readerId: String, storylineId: String, state: SubscriptionState)
+case class Reader(id: String, email: String)
 
-  val Character: InterfaceType[CharacterRepo, Character] =
-    InterfaceType(
-      "Character",
-      "A character in the Star Wars Trilogy",
-      () ⇒ fields[CharacterRepo, Character](
-        Field(
-          "id",
-          StringType,
-          Some("The id of the character."),
-          resolve = _.value.id),
-        Field(
-          "name",
-          OptionType(StringType),
-          Some("The name of the character."),
-          resolve = _.value.name),
-        Field(
-          "friends",
-          ListType(Character),
-          Some("The friends of the character, or an empty list if they have none."),
-          resolve = ctx ⇒ characters.deferSeqOpt(ctx.value.friends)),
-        Field(
-          "appearsIn",
-          OptionType(ListType(OptionType(EpisodeEnum))),
-          Some("Which movies they appear in."),
-          resolve = _.value.appearsIn map (e ⇒ Some(e)))
-      ))
+object SubscriptionState extends Enumeration {
+  type SubscriptionState = Value
+  val UNCONFIRMED, ACTIVE, UNSUBSCRIBED = Value
+}
 
-  val Human =
-    ObjectType(
-      "Human",
-      "A humanoid creature in the Star Wars universe.",
-      interfaces[CharacterRepo, Human](Character),
-      fields[CharacterRepo, Human](
-        Field(
-          "id",
-          StringType,
-          Some("The id of the human."),
-          resolve = _.value.id),
-        Field(
-          "name",
-          OptionType(StringType),
-          Some("The name of the human."),
-          resolve = _.value.name),
-        Field(
-          "friends",
-          ListType(Character),
-          Some("The friends of the human, or an empty list if they have none."),
-          resolve = ctx ⇒ characters.deferSeqOpt(ctx.value.friends)),
-        Field(
-          "appearsIn",
-          OptionType(ListType(OptionType(EpisodeEnum))),
-          Some("Which movies they appear in."),
-          resolve = _.value.appearsIn map (e ⇒ Some(e))),
-        Field(
-          "homePlanet",
-          OptionType(StringType),
-          Some("The home planet of the human, or null if unknown."),
-          resolve = _.value.homePlanet)
-      ))
+trait ArticleDAO[F[_]] {
+  def findAll(ids: Seq[String]): F[List[Article]]
+}
 
-  val Droid = ObjectType(
-    "Droid",
-    "A mechanical creature in the Star Wars universe.",
-    interfaces[CharacterRepo, Droid](Character),
-    fields[CharacterRepo, Droid](
-      Field(
-        "id",
-        StringType,
-        Some("The id of the droid."),
-        resolve = _.value.id),
-      Field(
-        "name",
-        OptionType(StringType),
-        Some("The name of the droid."),
-        resolve = ctx ⇒ Future.successful(ctx.value.name)),
-      Field(
-        "friends",
-        ListType(Character),
-        Some("The friends of the droid, or an empty list if they have none."),
-        resolve = ctx ⇒ characters.deferSeqOpt(ctx.value.friends)),
-      Field(
-        "appearsIn",
-        OptionType(ListType(OptionType(EpisodeEnum))),
-        Some("Which movies they appear in."),
-        resolve = _.value.appearsIn map (e ⇒ Some(e))),
-      Field(
-        "primaryFunction",
-        OptionType(StringType),
-        Some("The primary function of the droid."),
-        resolve = _.value.primaryFunction)
-    ))
+class ArticleDAOImpl[F[_] : Applicative] extends ArticleDAO[F] {
+  val allArticles = List(
+    Article("a11", "uri", "title"),
+    Article("a12", "uri", "title"),
+    Article("a21", "uri", "title"),
+    Article("a22", "uri", "title"),
+    Article("a31", "uri", "title"),
+    Article("a32", "uri", "title"),
+    Article("a41", "uri", "title"),
+    Article("a42", "uri", "title"),
+    Article("a51", "uri", "title"),
+    Article("a52", "uri", "title"),
+    Article("a61", "uri", "title"),
+    Article("a62", "uri", "title"),
+  )
 
-  val ID = Argument("id", StringType, description = "id of the character")
+  override def findAll(ids: Seq[String]): F[List[Article]] = {
+    println(s"ArticleDAOImpl#findAll $ids")
+    Applicative[F].pure(
+      ids.map(id => allArticles.find(_.id == id))
+        .flatten
+        .toList
+    )
+  }
+}
 
-  val EpisodeArg = Argument("episode", OptionInputType(EpisodeEnum),
-    description = "If omitted, returns the hero of the whole saga. If provided, returns the hero of that particular episode.")
+trait StorylineDAO[F[_]] {
+  def find(id: String): F[Storyline]
+  def findAll(ids: Seq[String]): F[List[Storyline]]
+  def findAll(offset: Long, limit: Long): F[List[Storyline]]
+}
 
-  val LimitArg = Argument("limit", OptionInputType(IntType), defaultValue = 20)
-  val OffsetArg = Argument("offset", OptionInputType(IntType), defaultValue = 0)
+class StorylineDAOImpl[F[_] : Applicative] extends StorylineDAO[F] {
+
+  val allStorylines = List(
+    Storyline("s1", "slug1", "title1", List("a11", "a12")),
+    Storyline("s2", "slug2", "title2", List("a21", "a22")),
+    Storyline("s3", "slug3", "title3", List("a31", "a32")),
+    Storyline("s4", "slug4", "title4", List("a41", "a42")),
+    Storyline("s5", "slug5", "title5", List("a51", "a52")),
+    Storyline("s6", "slug6", "title6", List("a61", "a62")),
+  )
+
+  override def find(id: String): F[Storyline] = {
+    println(s"StorylineDAOImpl#find $id")
+    findAll(Seq(id))
+      .map(_.head)
+  }
+
+  override def findAll(ids: Seq[String]): F[List[Storyline]] = {
+    println(s"StorylineDAOImpl#findAll $ids")
+    Applicative[F].pure(
+      ids.map(id => allStorylines.find(_.id == id))
+        .flatten
+        .toList
+    )
+  }
+
+  override def findAll(offset: Long, limit: Long): F[List[Storyline]] = {
+    println(s"StorylineDAOImpl#findAll $offset $limit")
+    Applicative[F].pure(
+      allStorylines.slice(offset.toInt, (offset + limit).toInt)
+    )
+  }
+}
+
+trait QueryContext[F[_]] {
+  def storylineDAO: StorylineDAO[F]
+  def articleDAO: ArticleDAO[F]
+}
+
+object QueryContext {
+  import scala.concurrent.ExecutionContext.Implicits.global
+
+  val buildContext = new QueryContext[Future] {
+    val storylineDAO = new StorylineDAOImpl[Future]
+    val articleDAO = new ArticleDAOImpl[Future]
+  }
+}
+
+abstract class SchemaDefinition[F[_], QueryCtx <: QueryContext[F]] {
+  lazy val StorylineType = ObjectType(
+    "Storyline",
+    "A series of articles that form a coherent line of investigation.",
+    fields[ArticleDAO[F], Storyline](
+      Field("id", StringType, Some("Uniquely identify a storyline."), resolve = _.value.id),
+      Field("slug", StringType, Some("A more human friendly identifier unique among storylines."), resolve = _.value.slug),
+      Field("title", StringType, Some("UI Text to label a storyline."), resolve = _.value.title),
+      Field("articles",
+        ListType(ArticleType),
+        Some("Most recent articles added to the storyline."),
+        resolve = ctx => articleFetcher.deferSeqOpt(ctx.value.articleIds))))
+
+  lazy val ArticleType = ObjectType(
+    "Article",
+    "A published article.",
+    fields[Unit, Article](
+      Field("id", StringType, Some("Uniquely identify this article. Persistent across edits."), resolve = _.value.id),
+      Field("uri", StringType, Some("Fully qualified URI where this article can be read."), resolve = _.value.uri),
+      Field("title", StringType, Some("UI Text to label an article."), resolve = _.value.title)))
+
+  val ID = Argument("id", StringType, description = "Unique identifier of this thing.")
+  val LimitArg = Argument("limit", OptionInputType(LongType), defaultValue = 20)
+  val OffsetArg = Argument("offset", OptionInputType(LongType), defaultValue = 0)
 
   val Query = ObjectType(
-    "Query", fields[CharacterRepo, Unit](
+    "Query", fields[QueryCtx, Unit](
       Field(
-        "hero",
-        Character,
-        arguments = EpisodeArg :: Nil,
-        deprecationReason = Some("Use `human` or `droid` fields instead"),
-        resolve = (ctx) ⇒ ctx.ctx.getHero(ctx.arg(EpisodeArg))),
-      Field(
-        "human",
-        OptionType(Human),
+        "storyline",
+        StorylineType,
         arguments = ID :: Nil,
-        resolve = ctx ⇒ ctx.ctx.getHuman(ctx arg ID)),
+        resolve = (ctx) => resolveStoryline(ctx, ctx.arg(ID))),
       Field(
-        "droid",
-        Droid,
-        arguments = ID :: Nil,
-        resolve = ctx ⇒ ctx.ctx.getDroid(ctx arg ID).get),
-      Field(
-        "humans",
-        ListType(Human),
-        arguments = LimitArg :: OffsetArg :: Nil,
-        resolve = ctx ⇒ ctx.ctx.getHumans(ctx arg LimitArg, ctx arg OffsetArg)),
-      Field(
-        "droids",
-        ListType(Droid),
-        arguments = LimitArg :: OffsetArg :: Nil,
-        resolve = ctx ⇒ ctx.ctx.getDroids(ctx arg LimitArg, ctx arg OffsetArg))
-    ))
+        "storylines",
+        ListType(StorylineType),
+        arguments = OffsetArg :: LimitArg :: Nil,
+        resolve = (ctx) => resolveStorylines(ctx, ctx.arg(OffsetArg), ctx.arg(LimitArg)))))
 
-  val StarWarsSchema = Schema(Query)
+  val buildSchema = Schema(Query)
+
+  /*
+   * Implement when a concrete F has been declared
+   */
+  val articleFetcher: Fetcher[QueryContext[F], Article, Article, String]
+  def resolveStorylines(ctx: Context[QueryCtx, Unit], offset: Long, limit: Long): Action[QueryCtx, List[Storyline]]
+  def resolveStoryline(ctx: Context[QueryCtx, Unit], id: String): Action[QueryCtx, Storyline]
+}
+
+class SchemaDefinitionFuture extends SchemaDefinition[Future, QueryContext[Future]] {
+
+  def fetchArticles(ctx: QueryContext[Future], ids: Seq[String]): Future[List[Article]] =
+    ctx.articleDAO.findAll(ids)
+
+  // def fetchStorylines(ctx: StorylineDAO[Future], ids: Seq[String]): Future[List[Storyline]] =
+  //   ctx.findAll(ids)
+
+  // def fetchStorylines(ctx: StorylineDAO[Future], offset: Long, limit: Long): Future[List[Storyline]] =
+  //   ctx.findAll(offset, limit)
+
+  override val articleFetcher = Fetcher.caching(fetchArticles)
+
+  def resolveStorylines(
+                         ctx: Context[QueryContext[Future], Unit],
+                         offset: Long,
+                         limit: Long
+                       ): FutureValue[QueryContext[Future], List[Storyline]] = {
+    FutureValue[QueryContext[Future], List[Storyline]](
+      ctx.ctx.storylineDAO.findAll(offset, limit))
+  }
+
+  def resolveStoryline(
+                        ctx: Context[QueryContext[Future], Unit],
+                        id: String
+                      ): FutureValue[QueryContext[Future], Storyline] = {
+    FutureValue[QueryContext[Future], Storyline](
+      ctx.ctx.storylineDAO.find(id))
+  }
+
+  val resolver = DeferredResolver.fetchers(articleFetcher)
+}
+
+object SchemaDefinition {
+  val schemaDefinition = new SchemaDefinitionFuture()
+  val schema = schemaDefinition.buildSchema
 }

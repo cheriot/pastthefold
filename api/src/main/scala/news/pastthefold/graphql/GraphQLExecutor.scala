@@ -6,12 +6,10 @@ import io.circe.generic.auto._
 import io.circe.jawn._
 import io.circe.optics.JsonPath._
 import io.circe.syntax._
-import news.pastthefold.dao.CharacterRepo
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.io._
 import sangria.ast.Document
-import sangria.execution.deferred.DeferredResolver
 import sangria.execution.{ErrorWithResolver, QueryAnalysisError, _}
 import sangria.marshalling.circe._
 import sangria.parser.{QueryParser, SyntaxError}
@@ -79,13 +77,13 @@ object GraphQLExecutor {
 
   private def executeGraphQL(query: Document, operationName: Option[String], variables: Json) =
     Executor.execute(
-      SchemaDefinition.StarWarsSchema,
+      SchemaDefinition.schema,
       query,
-      new CharacterRepo,
+      QueryContext.buildContext,
       variables = if (variables.isNull) Json.obj() else variables,
       operationName = operationName,
       exceptionHandler = exceptionHandler,
-      deferredResolver = DeferredResolver.fetchers(SchemaDefinition.characters))
+      deferredResolver = SchemaDefinition.schemaDefinition.resolver)
 
   // private def executeAndPrintGraphQL(query: String) =
   //   QueryParser.parse(query) match {
