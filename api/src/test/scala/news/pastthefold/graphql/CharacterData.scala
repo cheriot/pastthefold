@@ -1,4 +1,4 @@
-package news.pastthefold.dao
+package news.pastthefold.graphql
 
 object Episode extends Enumeration {
   val NEWHOPE, EMPIRE, JEDI = Value
