@@ -1,129 +1,12 @@
 package news.pastthefold.graphql
 
-import cats._
-import cats.implicits._
-import news.pastthefold.dao.SubscriptionState.SubscriptionState
-import news.pastthefold.graphql.Article.ArticleId
-import news.pastthefold.graphql.Storyline.StorylineId
+import news.pastthefold.model.Article.ArticleId
+import news.pastthefold.model.{Article, Storyline}
+import news.pastthefold.model.Storyline.StorylineId
 import sangria.execution.deferred._
 import sangria.schema._
 
 import scala.concurrent.Future
-import scala.language.higherKinds
-
-
-case class Storyline(id: StorylineId, slug: String, title: String)
-object Storyline {
-  type StorylineId = String
-  implicit val storylineHasId = HasId[Storyline, String](_.id)
-}
-
-case class Article(id: ArticleId, uri: String, title: String, storylineId: String)
-object Article {
-  type ArticleId = String
-  implicit val articleHasId = HasId[Article, String](_.id)
-}
-
-case class Subscription(id: String, readerId: String, storylineId: String, state: SubscriptionState)
-case class Reader(id: String, email: String)
-
-object SubscriptionState extends Enumeration {
-  type SubscriptionState = Value
-  val UNCONFIRMED, ACTIVE, UNSUBSCRIBED = Value
-}
-
-trait ArticleDAO[F[_]] {
-  def findAll(ids: Seq[String]): F[List[Article]]
-  def findByStorylineIds(ids: Seq[String]): F[List[Article]]
-}
-
-class ArticleDAOImpl[F[_] : Applicative] extends ArticleDAO[F] {
-  val allArticles = List(
-    Article("a11", "uri", "title", "s1"),
-    Article("a12", "uri", "title", "s1"),
-    Article("a21", "uri", "title", "s2"),
-    Article("a22", "uri", "title", "s2"),
-    Article("a31", "uri", "title", "s3"),
-    Article("a32", "uri", "title", "s3"),
-    Article("a41", "uri", "title", "s4"),
-    Article("a42", "uri", "title", "s4"),
-    Article("a51", "uri", "title", "s5"),
-    Article("a52", "uri", "title", "s5"),
-    Article("a61", "uri", "title", "s6"),
-    Article("a62", "uri", "title", "s6"),
-  )
-
-  override def findAll(ids: Seq[String]): F[List[Article]] = {
-    println(s"ArticleDAOImpl#findAll $ids")
-    Applicative[F].pure(
-      ids.map(id => allArticles.find(_.id == id))
-        .flatten
-        .toList
-    )
-  }
-
-  override def findByStorylineIds(storylineIds: Seq[String]): F[List[Article]] = {
-    println(s"ArticleDAOImpl#findByStorylineIds $storylineIds")
-    Applicative[F].pure(
-      storylineIds
-        .flatMap(sId => allArticles.find(_.storylineId == sId))
-        .toList
-    )
-  }
-}
-
-trait StorylineDAO[F[_]] {
-  def find(id: String): F[Storyline]
-  def findAll(ids: Seq[String]): F[List[Storyline]]
-  def findAll(offset: Long, limit: Long): F[List[Storyline]]
-}
-
-class StorylineDAOImpl[F[_] : Applicative] extends StorylineDAO[F] {
-
-  val allStorylines = List(
-    Storyline("s1", "slug1", "title1"),
-    Storyline("s2", "slug2", "title2"),
-    Storyline("s3", "slug3", "title3"),
-    Storyline("s4", "slug4", "title4"),
-    Storyline("s5", "slug5", "title5"),
-    Storyline("s6", "slug6", "title6"),
-  )
-
-  override def find(id: String): F[Storyline] = {
-    println(s"StorylineDAOImpl#find $id")
-    findAll(Seq(id))
-      .map(_.head)
-  }
-
-  override def findAll(ids: Seq[String]): F[List[Storyline]] = {
-    println(s"StorylineDAOImpl#findAll $ids")
-    Applicative[F].pure(
-      ids.map(id => allStorylines.find(_.id == id))
-        .flatten
-        .toList
-    )
-  }
-
-  override def findAll(offset: Long, limit: Long): F[List[Storyline]] = {
-    Applicative[F].pure(
-      allStorylines.slice(offset.toInt, (offset + limit).toInt)
-    )
-  }
-}
-
-trait QueryContext[F[_]] {
-  def storylineDAO: StorylineDAO[F]
-  def articleDAO: ArticleDAO[F]
-}
-
-object QueryContext {
-  import scala.concurrent.ExecutionContext.Implicits.global
-
-  val buildContext = new QueryContext[Future] {
-    val storylineDAO = new StorylineDAOImpl[Future]
-    val articleDAO = new ArticleDAOImpl[Future]
-  }
-}
 
 /**
   * Better examples than the official docs.
@@ -139,7 +22,7 @@ abstract class SchemaDefinition[F[_], QueryCtx <: QueryContext[F]] {
   lazy val StorylineType = ObjectType(
     "Storyline",
     "A series of articles that form a coherent line of investigation.",
-    fields[ArticleDAO[F], Storyline](
+    fields[Unit, Storyline](
       Field("id", StringType, Some("Uniquely identify a storyline."), resolve = _.value.id),
       Field("slug", StringType, Some("A more human friendly identifier unique among storylines."), resolve = _.value.slug),
       Field("title", StringType, Some("UI Text to label a storyline."), resolve = _.value.title),
@@ -199,20 +82,18 @@ class SchemaDefinitionFuture extends SchemaDefinition[Future, QueryContext[Futur
                          ctx: Context[QueryContext[Future], Unit],
                          offset: Long,
                          limit: Long
-                       ): FutureValue[QueryContext[Future], List[Storyline]] = {
-    FutureValue[QueryContext[Future], List[Storyline]](
+                       ): FutureValue[QueryContext[Future], List[Storyline]] =
+    FutureValue(
       ctx.ctx.storylineDAO.findAll(offset, limit)
     )
-  }
 
   def resolveStoryline(
                         ctx: Context[QueryContext[Future], Unit],
                         id: String
-                      ): FutureValue[QueryContext[Future], Storyline] = {
-    FutureValue[QueryContext[Future], Storyline](
+                      ): FutureValue[QueryContext[Future], Storyline] =
+    FutureValue(
       ctx.ctx.storylineDAO.find(id)
     )
-  }
 
   val resolver = DeferredResolver.fetchers(articlesFetcher)
 }
