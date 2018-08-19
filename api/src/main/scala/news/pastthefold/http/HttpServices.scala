@@ -9,7 +9,7 @@ import org.http4s.circe._
 import org.http4s.dsl.io._
 
 object HttpServices {
-  val helloWorldHttpService: HttpRoutes[IO] = HttpService[IO] {
+  val helloWorldHttpService: HttpRoutes[IO] = HttpRoutes.of[IO] {
     case GET -> Root / "hello" / name =>
       Ok(s"Hello, $name.")
   }
@@ -32,23 +32,24 @@ object HttpServices {
       .isDefined
 
   /** Extend to fully implement https://graphql.org/learn/serving-over-http/#http-methods-headers-and-body */
-  val graphQLHttpService: HttpRoutes[IO] = HttpService[IO] {
+  val graphQLHttpService: HttpRoutes[IO] = HttpRoutes.of[IO] {
 
     case GET -> Root / "graphql" :? QueryParamMatcher(query) =>
-      IO.fromFuture(IO(GraphQLExecutor.runGraphQL(query))).flatten
+      GraphQLExecutor.runGraphQL(query)
 
     case request @ POST -> Root / "graphql" if contentType(request, "application/json") =>
       request.as[Json].flatMap { body =>
-        IO.fromFuture(IO(GraphQLExecutor.runGraphQL(body))).flatten
+        GraphQLExecutor.runGraphQL(body)
       }
 
     case request @ GET -> Root / "explore" =>
       StaticFile.fromResource("/graphiql.html", Some(request))
         .getOrElseF(NotFound("Can't find the graphiql html."))
 
-    case (GET | POST) -> Root / "graphql" => BadRequest("Invalid GraphQL query.")
+    case (GET | POST) -> Root / "graphql" =>
+      BadRequest("Invalid GraphQL query.")
   }
-  val allHttpServices = helloWorldHttpService combineK graphQLHttpService
 
+  val allHttpServices = helloWorldHttpService combineK graphQLHttpService
 
 }

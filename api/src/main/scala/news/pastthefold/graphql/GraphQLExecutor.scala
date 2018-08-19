@@ -15,19 +15,18 @@ import sangria.marshalling.circe._
 import sangria.parser.{QueryParser, SyntaxError}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 object GraphQLExecutor {
 
-  def runGraphQL(queryStr: String): Future[IO[Response[IO]]] =
+  def runGraphQL(queryStr: String): IO[Response[IO]] =
     parse(queryStr) match {
       case Right(json: Json) => runGraphQL(json)
-      case Left(parsingFailure) => Future.successful(BadRequest(s"Error json parsing query. ${parsingFailure.message}"))
+      case Left(parsingFailure) => BadRequest(s"Error json parsing query. ${parsingFailure.message}")
     }
 
-  def runGraphQL(body: Json): Future[IO[Response[IO]]] = {
+  def runGraphQL(body: Json): IO[Response[IO]] = {
     val query = root.query.string.getOption(body)
     val operationName = root.operationName.string.getOption(body)
     val variablesJson = root.variables.string.getOption(body)
@@ -35,12 +34,12 @@ object GraphQLExecutor {
     query.map(QueryParser.parse(_)) match {
       case Some(Success(ast)) ⇒
         variablesJson.map(parse) match {
-          case Some(Left(error)) ⇒ Future.successful(BadRequest(formatError(error)))
+          case Some(Left(error)) ⇒ BadRequest(formatError(error))
           case Some(Right(json)) ⇒ runGraphQL(ast, operationName, json)
           case None ⇒ runGraphQL(ast, operationName, root.variables.json.getOption(body) getOrElse Json.obj())
         }
-      case Some(Failure(error)) ⇒ Future.successful(BadRequest(formatError(error)))
-      case None ⇒ Future.successful(BadRequest(formatError("No query to execute")))
+      case Some(Failure(error)) ⇒ BadRequest(formatError(error))
+      case None ⇒ BadRequest(formatError("No query to execute"))
     }
   }
 
@@ -67,13 +66,17 @@ object GraphQLExecutor {
   private def formatError(message: String): Json =
     ErrorResponse.oneMessage(StringMessage(message))
 
-  private def runGraphQL(query: Document, operationName: Option[String], variables: Json) =
-    executeGraphQL(query, operationName, variables)
-      .map(Ok(_))
-      .recover {
-        case error: QueryAnalysisError ⇒ BadRequest(error.resolveError)
-        case error: ErrorWithResolver ⇒ InternalServerError(error.resolveError)
-      }
+  private def runGraphQL(query: Document, operationName: Option[String], variables: Json): IO[Response[IO]] = {
+    val result = IO {
+      executeGraphQL(query, operationName, variables)
+        .map(Ok(_))
+        .recover {
+          case error: QueryAnalysisError ⇒ BadRequest(error.resolveError)
+          case error: ErrorWithResolver ⇒ InternalServerError(error.resolveError)
+        }
+    }
+    IO.fromFuture(result).flatMap(a => a)
+  }
 
   private def executeGraphQL(query: Document, operationName: Option[String], variables: Json) =
     Executor.execute(
@@ -84,14 +87,6 @@ object GraphQLExecutor {
       operationName = operationName,
       exceptionHandler = exceptionHandler,
       deferredResolver = SchemaDefinition.schemaDefinition.resolver)
-
-  // private def executeAndPrintGraphQL(query: String) =
-  //   QueryParser.parse(query) match {
-  //     case Success(doc) ⇒
-  //       println(Await.result(executeGraphQL(doc, None, Json.obj()), 10 seconds).spaces2)
-  //     case Failure(error) ⇒
-  //       Console.err.print(error.getMessage())
-  //   }
 
   private val exceptionHandler = ExceptionHandler {
     case (_, e) ⇒ HandledException(e.getMessage)

@@ -30,7 +30,7 @@ object api extends SbtModule with GoogleAppEngine {
     "-language:implicitConversions",     // Allow definition of implicit functions called views
     "-unchecked",                        // Enable additional warnings where generated code depends on assumptions.
     "-Xcheckinit",                       // Wrap field accessors to throw an exception on uninitialized access.
-    // "-Xfatal-warnings",                  // Fail the compilation if there are any warnings.
+    "-Xfatal-warnings",                  // Fail the compilation if there are any warnings.
     "-Xfuture",                          // Turn on future language features.
     "-Xlint:adapted-args",               // Warn if an argument list is modified to match the receiver.
     "-Xlint:by-name-right-associative",  // By-name parameter of right associative operator.
@@ -95,7 +95,10 @@ object api extends SbtModule with GoogleAppEngine {
   )
 
   object test extends Tests {
-    override def ivyDeps = Agg(ivy"com.lihaoyi::utest:0.6.3")
+    override def ivyDeps = Agg(
+      ivy"com.lihaoyi::utest:0.6.3",
+      ivy"io.circe::circe-parser:$circeVersion",
+    )
     override def testFrameworks = Seq("utest.runner.Framework")
   }
 }
