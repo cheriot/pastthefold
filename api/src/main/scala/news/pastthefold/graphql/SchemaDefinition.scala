@@ -12,10 +12,8 @@ import scala.concurrent.Future
   * Better examples than the official docs.
   * https://github.com/howtographql/sangria/blob/master/src/main/scala/com/howtographql/scala/sangria/GraphQLSchema.scala
   *
-  * @tparam F
-  * @tparam QueryCtx
   */
-abstract class SchemaDefinition[F[_], QueryCtx <: QueryContext[F]] {
+abstract class StorylineSchemaDefinition[F[_]] {
 
   val articlesByStorylineRel = Relation[Article, StorylineId]("byStoryline", a => Seq(a.storylineId))
 
@@ -44,7 +42,8 @@ abstract class SchemaDefinition[F[_], QueryCtx <: QueryContext[F]] {
   val OffsetArg = Argument("offset", OptionInputType(LongType), defaultValue = 0)
 
   val Query = ObjectType(
-    "Query", fields[QueryCtx, Unit](
+    "Query",
+    fields[QueryContext[F], Unit](
       Field(
         "storyline",
         StorylineType,
@@ -56,19 +55,22 @@ abstract class SchemaDefinition[F[_], QueryCtx <: QueryContext[F]] {
         arguments = OffsetArg :: LimitArg :: Nil,
         resolve = (ctx) => resolveStorylines(ctx, ctx.arg(OffsetArg), ctx.arg(LimitArg)))))
 
-  val buildSchema = Schema(Query)
+  lazy val resolver = DeferredResolver.fetchers(articlesFetcher)
+  val schema = Schema(Query)
 
   /*
-   * Implement when a concrete F has been declared
+   * Implement with a concrete F
    */
   val articlesFetcher: Fetcher[QueryContext[F], Article, Article, ArticleId]
-  def resolveStorylines(ctx: Context[QueryCtx, Unit], offset: Long, limit: Long): Action[QueryCtx, List[Storyline]]
-  def resolveStoryline(ctx: Context[QueryCtx, Unit], id: String): Action[QueryCtx, Storyline]
+
+  def resolveStorylines(ctx: Context[QueryContext[F], Unit], offset: Long, limit: Long ): Action[QueryContext[F], List[Storyline]]
+
+  def resolveStoryline(ctx: Context[QueryContext[F], Unit], id: String): Action[QueryContext[F], Storyline]
 }
 
-class SchemaDefinitionFuture extends SchemaDefinition[Future, QueryContext[Future]] {
+class StorylineSchemaDefinitionFuture extends StorylineSchemaDefinition[Future] {
 
-  override val articlesFetcher: Fetcher[QueryContext[Future], Article, Article, ArticleId] = {
+  val articlesFetcher: Fetcher[QueryContext[Future], Article, Article, ArticleId] = {
     def fetch(ctx: QueryContext[Future], ids: Seq[ArticleId]): Future[Seq[Article]] =
       ctx.articleDAO.findAll(ids)
 
@@ -94,11 +96,8 @@ class SchemaDefinitionFuture extends SchemaDefinition[Future, QueryContext[Futur
     FutureValue(
       ctx.ctx.storylineDAO.find(id)
     )
-
-  val resolver = DeferredResolver.fetchers(articlesFetcher)
 }
 
 object SchemaDefinition {
-  val schemaDefinition = new SchemaDefinitionFuture()
-  val schema = schemaDefinition.buildSchema
+  val storylineSchemaDefinition = new StorylineSchemaDefinitionFuture
 }

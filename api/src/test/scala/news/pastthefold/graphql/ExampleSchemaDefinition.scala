@@ -1,6 +1,5 @@
 package news.pastthefold.graphql
 
-import news.pastthefold.dao._
 import sangria.execution.deferred.{Fetcher, HasId}
 import sangria.schema._
 

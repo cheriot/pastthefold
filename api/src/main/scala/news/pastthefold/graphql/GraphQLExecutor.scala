@@ -80,13 +80,13 @@ object GraphQLExecutor {
 
   private def executeGraphQL(query: Document, operationName: Option[String], variables: Json) =
     Executor.execute(
-      SchemaDefinition.schema,
+      SchemaDefinition.storylineSchemaDefinition.schema,
       query,
       QueryContext.buildContext,
       variables = if (variables.isNull) Json.obj() else variables,
       operationName = operationName,
       exceptionHandler = exceptionHandler,
-      deferredResolver = SchemaDefinition.schemaDefinition.resolver)
+      deferredResolver = SchemaDefinition.storylineSchemaDefinition.resolver)
 
   private val exceptionHandler = ExceptionHandler {
     case (_, e) ⇒ HandledException(e.getMessage)
