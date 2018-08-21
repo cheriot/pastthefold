@@ -35,11 +35,11 @@ object HttpServices {
   val graphQLHttpService: HttpRoutes[IO] = HttpRoutes.of[IO] {
 
     case GET -> Root / "graphql" :? QueryParamMatcher(query) =>
-      GraphQLExecutor.runGraphQL(query)
+      GraphQLExecutor.httpGraphQL(query)
 
     case request @ POST -> Root / "graphql" if contentType(request, "application/json") =>
       request.as[Json].flatMap { body =>
-        GraphQLExecutor.runGraphQL(body)
+        GraphQLExecutor.httpGraphQL(body)
       }
 
     case request @ GET -> Root / "explore" =>
