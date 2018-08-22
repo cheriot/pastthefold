@@ -30,7 +30,7 @@ object api extends SbtModule with GoogleAppEngine {
     "-language:implicitConversions",     // Allow definition of implicit functions called views
     "-unchecked",                        // Enable additional warnings where generated code depends on assumptions.
     "-Xcheckinit",                       // Wrap field accessors to throw an exception on uninitialized access.
-    "-Xfatal-warnings",                  // Fail the compilation if there are any warnings.
+    // "-Xfatal-warnings",                  // Fail the compilation if there are any warnings.
     "-Xfuture",                          // Turn on future language features.
     "-Xlint:adapted-args",               // Warn if an argument list is modified to match the receiver.
     "-Xlint:by-name-right-associative",  // By-name parameter of right associative operator.
@@ -72,6 +72,7 @@ object api extends SbtModule with GoogleAppEngine {
   val http4sVersion = "1.0.0-SNAPSHOT"
   val circeVersion = "0.9.3"
   val catsVersion = "1.0.1"
+  val tsecVersion = "0.0.1-M11"
   override def ivyDeps = Agg(
     ivy"org.http4s::http4s-blaze-server:$http4sVersion",
     ivy"org.http4s::http4s-circe:$http4sVersion",
@@ -86,6 +87,8 @@ object api extends SbtModule with GoogleAppEngine {
 
     ivy"org.sangria-graphql::sangria:1.4.1",
     ivy"org.sangria-graphql::sangria-circe:1.2.1",
+
+    ivy"io.github.jmcardon::tsec-http4s:$tsecVersion",
 
     ivy"com.lihaoyi::ammonite-ops:1.1.2",
     ivy"ch.qos.logback:logback-classic:1.2.3",

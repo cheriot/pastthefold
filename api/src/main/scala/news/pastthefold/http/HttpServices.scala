@@ -14,13 +14,6 @@ object HttpServices {
       Ok(s"Hello, $name.")
   }
 
-  // val readerHttpService = HttpService[IO] {
-  //   // Articles's subscribe button.
-  //   case req @ POST -> Root / "subscription" / articleId => ???
-  //   // Unsubscribe links in email
-  //   case req @ DELETE -> Root / "subscription" / articleId => ???
-  // }
-
   import org.http4s.headers.`Content-Type`
   object QueryParamMatcher extends QueryParamDecoderMatcher[String]("query")
 
