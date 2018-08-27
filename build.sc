@@ -1,6 +1,8 @@
 import ammonite.ops._
 import mill._
+import mill.define.Target
 import mill.scalalib._
+import mill.util.Loose
 
 object api extends SbtModule with GoogleAppEngine {
   def scalaVersion = "2.12.4"
@@ -16,6 +18,10 @@ object api extends SbtModule with GoogleAppEngine {
 
   /** Since there are multiple Main classes. Specify the one to use with `mill api.run` */
   override def mainClass: T[Option[String]] = Some("news.pastthefold.Main")
+
+  override def scalacPluginIvyDeps: Target[Loose.Agg[Dep]] = Agg(
+    ivy"org.spire-math::kind-projector:0.9.7"
+  )
 
   // Consider https://github.com/DavidGregory084/sbt-tpolecat/blob/master/src/main/scala/io/github/davidgregory084/TpolecatPlugin.scala
   // Steal the compiler flags list from better-files.

@@ -5,6 +5,7 @@ import java.util.UUID
 import cats.Id
 import cats.effect.IO
 import cats.syntax.semigroupk._
+import news.pastthefold.model.User
 import org.http4s.HttpService
 import org.http4s.dsl.io._
 import tsec.authentication._
@@ -27,9 +28,9 @@ object SignedCookieExample {
 
   val settings: TSecCookieSettings = TSecCookieSettings(
     cookieName = "tsec-auth",
-    secure = false,
-    expiryDuration = 10.minutes, // Absolute expiration time
-    maxIdle = None // Rolling window expiration. Set this to a FiniteDuration if you intend to have one
+    secure = false, // Turn on in production
+    expiryDuration = 365.days, // Absolute expiration time
+    maxIdle = Some(48.hours) // Rolling window expiration. Set this to a FiniteDuration if you intend to have one
   )
 
   def businessLogic[T](t: T): T = {
