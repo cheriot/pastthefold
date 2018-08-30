@@ -37,7 +37,7 @@ object PasswordAuthServiceTest extends TestSuite {
     }
 
     "login valid" - {
-      val user = User(4, "fake@email.com", PasswordHash("passwordHash"), Salt("salt"))
+      val user = FakeData.user
       val instance = build(
         userAuthDAO = buildUserAuthDAO(userOpt = Some(user)),
         buildPasswordHashingService(Verified)
@@ -47,7 +47,7 @@ object PasswordAuthServiceTest extends TestSuite {
     }
 
     "login fail password" - {
-      val user = User(4, "fake@email.com", PasswordHash("passwordHash"), Salt("salt"))
+      val user = FakeData.user
       val instance = build(
         userAuthDAO = buildUserAuthDAO(userOpt = Some(user)),
         buildPasswordHashingService(VerificationFailed)
@@ -62,10 +62,6 @@ object PasswordAuthServiceTest extends TestSuite {
       )
       // instance.login("fake@email.com", UntrustedPassword(password)).unsafeRunSync()
       // TODO capture this error properly when the UserDAO api is better.
-    }
-
-    "embedAuth" - {
-      // TODO
     }
   }
 }

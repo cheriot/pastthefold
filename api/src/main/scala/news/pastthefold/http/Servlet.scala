@@ -3,11 +3,16 @@ package news.pastthefold.http
 import cats.effect._
 import news.pastthefold.http.HttpServices._
 import org.http4s.server._
-import org.http4s.servlet.{BlockingHttp4sServlet, BlockingServletIo}
+import org.http4s.servlet.{BlockingServletIo, Http4sServlet}
 
-class Servlet extends BlockingHttp4sServlet[IO](
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+
+class Servlet extends Http4sServlet[IO](
   allHttpServices,
-  BlockingServletIo(Servlet.DefaultChunkSize),
+  2.seconds,
+  ExecutionContext.global,
+  BlockingServletIo[IO](Servlet.DefaultChunkSize),
   DefaultServiceErrorHandler
 )
 

@@ -5,8 +5,8 @@ import cats.implicits._
 import fs2._
 import news.pastthefold.auth._
 import news.pastthefold.model.{UntrustedPassword, User}
+import org.http4s._
 import org.http4s.dsl.io._
-import org.http4s.{HttpRoutes, _}
 
 class AuthHttpRoutes[F[_] : Effect](userAuthService: PasswordAuthService[F]) {
 
@@ -24,19 +24,18 @@ class AuthHttpRoutes[F[_] : Effect](userAuthService: PasswordAuthService[F]) {
   def unauthenticatedError(loginError: LoginError): F[Response[F]] =
     Sync[F].pure(Response(status = loginError.status))
 
-  def endpoints: HttpRoutes[F] =
-    HttpRoutes.of[F] {
-      case req@POST -> Root / "login" =>
-        req.decode[UrlForm] { urlForm =>
-          extractLoginForm(urlForm)
-            .flatTraverse((userAuthService.login _).tupled)
-            .flatMap {
-              case Right(user) => authenticatedOk(user, s"Success. You're logged in!")
-              case Left(loginError) => unauthenticatedError(loginError)
-            }
-        }
+  def endpoints = HttpService[F] {
+    case req@POST -> Root / "login" =>
+      req.decode[UrlForm] { urlForm =>
+        extractLoginForm(urlForm)
+          .flatTraverse((userAuthService.login _).tupled)
+          .flatMap {
+            case Right(user) => authenticatedOk(user, s"Success. You're logged in!")
+            case Left(loginError) => unauthenticatedError(loginError)
+          }
+      }
 
-      case POST -> Root / "logout" => ???
-    }
+    case POST -> Root / "logout" => ???
+  }
 
 }

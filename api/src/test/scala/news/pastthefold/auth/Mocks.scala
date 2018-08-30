@@ -1,13 +1,20 @@
 package news.pastthefold.auth
 
+import java.util.UUID
+
+import tsec.authentication.{AuthenticatedCookie, BackingStore}
+import tsec.mac.jca.HMACSHA256
 import cats.data.OptionT
-import cats.effect.IO
+import cats.effect.{IO, Sync}
 import news.pastthefold.dao.UserAuthDAO
 import news.pastthefold.model.{Salt, UntrustedPassword, User}
 import org.http4s.Response
+import tsec.authentication.BackingStore
 import tsec.common.{VerificationFailed, VerificationStatus}
 import tsec.passwordhashers.PasswordHash
 import tsec.passwordhashers.jca.HardenedSCrypt
+
+import scala.collection.mutable
 
 object Mocks {
 
@@ -29,6 +36,8 @@ object Mocks {
     override def findByEmail(email: String): IO[User] =
       if (userOpt.isDefined) IO { userOpt.get }
       else IO.raiseError(new Throwable("user not found"))
+
+    override def get(id: Int): OptionT[IO, User] = OptionT(IO.pure(userOpt))
   }
 
   def buildPasswordHashingService(
@@ -46,4 +55,49 @@ object Mocks {
   def buildSecureRequestService = new SecureRequestService[IO] {
     override def embedAuth(user: User, response: Response[IO]): IO[Response[IO]] = ???
   }
+
+  class MockBackingStore[F[_], Id, Value] extends BackingStore [F, Id, Value] {
+    override def put(elem: Value): F[Value] = ???
+
+    override def update(v: Value): F[Value] = ???
+
+    override def delete(id: Id): F[Unit] = ???
+
+    override def get(id: Id): OptionT[F, Value] = ???
+  }
+
+  class MockCookieStore[F[_]] extends MockBackingStore[F, UUID, AuthenticatedCookie[HMACSHA256, Int]]
+
+  def dummyBackingStore[F[_], I, V](getId: V => I)(implicit F: Sync[F]) = new BackingStore[F, I, V] {
+    private val storageMap = mutable.HashMap.empty[I, V]
+
+    def put(elem: V): F[V] = {
+      val map = storageMap.put(getId(elem), elem)
+      if (map.isEmpty)
+        F.pure(elem)
+      else
+        F.raiseError(new IllegalArgumentException)
+    }
+
+    def get(id: I): OptionT[F, V] =
+      OptionT.fromOption[F](storageMap.get(id))
+
+    def update(v: V): F[V] = {
+      storageMap.update(getId(v), v)
+      F.pure(v)
+    }
+
+    def delete(id: I): F[Unit] =
+      storageMap.remove(id) match {
+        case Some(_) => F.unit
+        case None    => F.raiseError(new IllegalArgumentException)
+      }
+  }
+
+  def cookieBackingStore[F[_]: Sync]: BackingStore[F, UUID, AuthenticatedCookie[HMACSHA256, Int]] =
+    dummyBackingStore[F, UUID, AuthenticatedCookie[HMACSHA256, Int]](_.id)
+
+  def userBackingStore[F[_]: Sync]: BackingStore[F, Int, User] =
+    dummyBackingStore[F, Int, User](_.id)
+
 }

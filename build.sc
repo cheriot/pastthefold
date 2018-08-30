@@ -75,7 +75,7 @@ object api extends SbtModule with GoogleAppEngine {
 
   // App Engine Standard needs a blocking servlet, which is not in the Http4s stable release. This snapshot is built
   // locally (ie it's not in remote repos).
-  val http4sVersion = "1.0.0-SNAPSHOT"
+  val http4sVersion = "0.18.16"
   val circeVersion = "0.9.3"
   val catsVersion = "1.0.1"
   val tsecVersion = "0.0.1-M11"
@@ -90,6 +90,8 @@ object api extends SbtModule with GoogleAppEngine {
 
     ivy"org.typelevel::cats-core:$catsVersion",
     ivy"org.typelevel::cats-effect:0.10.1",
+
+    ivy"org.typelevel::kittens:1.1.0",
 
     ivy"org.sangria-graphql::sangria:1.4.1",
     ivy"org.sangria-graphql::sangria-circe:1.2.1",

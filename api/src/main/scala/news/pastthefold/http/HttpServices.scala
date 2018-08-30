@@ -9,7 +9,7 @@ import org.http4s.circe._
 import org.http4s.dsl.io._
 
 object HttpServices {
-  val helloWorldHttpService: HttpRoutes[IO] = HttpRoutes.of[IO] {
+  val helloWorldHttpService = HttpService[IO] {
     case GET -> Root / "hello" / name =>
       Ok(s"Hello, $name.")
   }
@@ -25,7 +25,7 @@ object HttpServices {
       .isDefined
 
   /** Extend to fully implement https://graphql.org/learn/serving-over-http/#http-methods-headers-and-body */
-  val graphQLHttpService: HttpRoutes[IO] = HttpRoutes.of[IO] {
+  val graphQLHttpService  = HttpService[IO] {
 
     case GET -> Root / "graphql" :? QueryParamMatcher(query) =>
       GraphQLExecutor.httpGraphQL(query)
