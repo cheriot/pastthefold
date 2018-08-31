@@ -1,7 +1,8 @@
-package news.pastthefold.http
+package news.pastthefold
 
 import cats.effect._
 import news.pastthefold.graphql.GraphQLExecutor
+import news.pastthefold.http.GraphQLHttpRoutes
 import org.http4s.server._
 import org.http4s.servlet.{BlockingServletIo, Http4sServlet}
 
@@ -10,7 +11,7 @@ import scala.concurrent.duration._
 
 class Servlet extends Http4sServlet[IO](
   // TODO actually construct all the routes and use them here.
-  GraphQLHttpRoutes.endpoints(GraphQLExecutor()),
+  Registry().allHttpEndpoints,
   2.seconds,
   ExecutionContext.global,
   BlockingServletIo[IO](Servlet.DefaultChunkSize),

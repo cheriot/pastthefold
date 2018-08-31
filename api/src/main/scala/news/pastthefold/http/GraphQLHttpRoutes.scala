@@ -1,7 +1,6 @@
 package news.pastthefold.http
 
 import cats.effect._
-import cats.implicits._
 import io.circe.Json
 import news.pastthefold.graphql.GraphQLExecutor
 import org.http4s.{HttpService, Request, StaticFile}

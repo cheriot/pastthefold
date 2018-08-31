@@ -1,9 +1,8 @@
 package news.pastthefold.dao
 
-import cats._
-import cats.implicits._
 import cats.data.OptionT
 import cats.effect.Sync
+import cats.implicits._
 import news.pastthefold.model.{Salt, User}
 import tsec.authentication.BackingStore
 import tsec.passwordhashers.PasswordHash

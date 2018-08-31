@@ -1,7 +1,7 @@
 <web-app xmlns="http://java.sun.com/xml/ns/javaee" version="2.5">
     <servlet>
         <servlet-name>pastthefold</servlet-name>
-        <servlet-class>news.pastthefold.http.Servlet</servlet-class>
+        <servlet-class>news.pastthefold.Servlet</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>pastthefold</servlet-name>
