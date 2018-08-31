@@ -4,12 +4,12 @@ import cats.effect._
 import cats.implicits._
 import io.circe.Json
 import news.pastthefold.graphql.GraphQLExecutor
-import org.http4s._
+import org.http4s.{HttpService, Request, StaticFile}
 import org.http4s.circe._
-import org.http4s.dsl.io._
+import org.http4s.dsl.Http4sDsl
 
-object HttpServices {
-  val helloWorldHttpService = HttpService[IO] {
+class GraphQLHttpRoutes extends Http4sDsl[IO] {
+  def helloWorldHttpService = HttpService[IO] {
     case GET -> Root / "hello" / name =>
       Ok(s"Hello, $name.")
   }
@@ -25,14 +25,13 @@ object HttpServices {
       .isDefined
 
   /** Extend to fully implement https://graphql.org/learn/serving-over-http/#http-methods-headers-and-body */
-  val graphQLHttpService  = HttpService[IO] {
-
+  def endpoints(graphQLExecutor: GraphQLExecutor) = HttpService[IO] {
     case GET -> Root / "graphql" :? QueryParamMatcher(query) =>
-      GraphQLExecutor.httpGraphQL(query)
+      graphQLExecutor.httpGraphQL(query)
 
     case request @ POST -> Root / "graphql" if contentType(request, "application/json") =>
       request.as[Json].flatMap { body =>
-        GraphQLExecutor.httpGraphQL(body)
+        graphQLExecutor.httpGraphQL(body)
       }
 
     case request @ GET -> Root / "explore" =>
@@ -43,6 +42,9 @@ object HttpServices {
       BadRequest("Invalid GraphQL query.")
   }
 
-  val allHttpServices = helloWorldHttpService combineK graphQLHttpService
+}
 
+object GraphQLHttpRoutes {
+  def endpoints(graphQLExecutor: GraphQLExecutor): HttpService[IO] =
+    new GraphQLHttpRoutes().endpoints(graphQLExecutor)
 }

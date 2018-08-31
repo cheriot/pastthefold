@@ -80,3 +80,12 @@ class PasswordAuthServiceImpl[F[_] : Effect](
   private def passwordRequirements(password: String): Boolean =
     password.length > minPasswordLength
 }
+
+object PasswordAuthService {
+  def apply[F[_] : Effect](
+                            userAuthDAO: UserAuthDAO[F],
+                            passwordEncryptionService: PasswordHashingService[F],
+                            secureRequestService: SecureRequestService[F]
+                          ) =
+    new PasswordAuthServiceImpl[F](userAuthDAO, passwordEncryptionService, secureRequestService)
+}

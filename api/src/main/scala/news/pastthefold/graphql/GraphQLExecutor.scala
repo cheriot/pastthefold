@@ -1,5 +1,8 @@
 package news.pastthefold.graphql
 
+import cats._
+import cats.data._
+import cats.implicits._
 import cats.effect._
 import io.circe.Json
 import io.circe.generic.auto._
@@ -19,7 +22,7 @@ import scala.concurrent.Future
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
-object GraphQLExecutor {
+class GraphQLExecutor {
 
   def httpGraphQL(query: String): IO[Response[IO]] = {
     // This is actually not going to be json. runGraphQL will need to accept a query: String
@@ -42,7 +45,6 @@ object GraphQLExecutor {
     }
 
     IO.fromFuture(result).flatMap(a => a)
-
   }
 
   def runGraphQL(body: Json): Future[Json] = {
@@ -100,4 +102,9 @@ object GraphQLExecutor {
   private val exceptionHandler = ExceptionHandler {
     case (_, e) ⇒ HandledException(e.getMessage)
   }
+}
+
+object GraphQLExecutor {
+  def apply() =
+    new GraphQLExecutor()
 }

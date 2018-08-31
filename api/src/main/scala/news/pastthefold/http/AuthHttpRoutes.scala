@@ -24,7 +24,7 @@ class AuthHttpRoutes[F[_] : Effect](userAuthService: PasswordAuthService[F]) {
   def unauthenticatedError(loginError: LoginError): F[Response[F]] =
     Sync[F].pure(Response(status = loginError.status))
 
-  def endpoints = HttpService[F] {
+  def endpoints() = HttpService[F] {
     case req@POST -> Root / "login" =>
       req.decode[UrlForm] { urlForm =>
         extractLoginForm(urlForm)
@@ -38,4 +38,9 @@ class AuthHttpRoutes[F[_] : Effect](userAuthService: PasswordAuthService[F]) {
     case POST -> Root / "logout" => ???
   }
 
+}
+
+object AuthHttpRoutes {
+  def endpoints[F[_]: Effect](passwordAuthService: PasswordAuthService[F]) =
+    new AuthHttpRoutes[F](passwordAuthService).endpoints()
 }

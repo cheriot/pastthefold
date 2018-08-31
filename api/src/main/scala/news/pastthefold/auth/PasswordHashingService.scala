@@ -18,6 +18,9 @@ trait PasswordHashingService[F[_]] {
 
 object PasswordHashingService {
   type EncryptedPassword = (Salt, PasswordHash[HardenedSCrypt])
+
+  def apply[F[_]: Sync]() =
+    new HardenedSCryptPasswordHashingService[F]
 }
 
 class HardenedSCryptPasswordHashingService[F[_] : Sync] extends PasswordHashingService[F] with ManagedRandom {

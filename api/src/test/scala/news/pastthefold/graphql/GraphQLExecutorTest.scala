@@ -52,7 +52,7 @@ object GraphQLExecutorTest extends TestSuite {
          |  "query": "${query.replaceAll("\n", "").trim}"
          |}
         """.stripMargin
-    GraphQLExecutor.httpGraphQL(json).unsafeRunSync()
+    GraphQLExecutor().httpGraphQL(json).unsafeRunSync()
   }
 
 

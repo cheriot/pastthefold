@@ -3,15 +3,54 @@ package news.pastthefold.auth
 import java.util.UUID
 
 import cats.Id
-import cats.effect.IO
+import cats.data.OptionT
+import cats.effect.{IO, Sync}
 import cats.syntax.semigroupk._
 import news.pastthefold.model.User
 import org.http4s.HttpService
 import org.http4s.dsl.io._
-import tsec.authentication._
+import tsec.authentication.{AuthenticatedCookie, BackingStore, _}
 import tsec.mac.jca.{HMACSHA256, MacSigningKey}
 
+import scala.collection.mutable
 import scala.concurrent.duration._
+
+object ExampleAuthHelpers {
+  def dummyBackingStore[F[_], I, V](getId: V => I)(implicit F: Sync[F]) = new BackingStore[F, I, V] {
+    private val storageMap = mutable.HashMap.empty[I, V]
+
+    def put(elem: V): F[V] = {
+      val map = storageMap.put(getId(elem), elem)
+      if (map.isEmpty)
+        F.pure(elem)
+      else
+        F.raiseError(new IllegalArgumentException)
+    }
+
+    def get(id: I): OptionT[F, V] =
+      OptionT.fromOption[F](storageMap.get(id))
+
+    def update(v: V): F[V] = {
+      storageMap.update(getId(v), v)
+      F.pure(v)
+    }
+
+    def delete(id: I): F[Unit] =
+      storageMap.remove(id) match {
+        case Some(_) => F.unit
+        case None    => F.raiseError(new IllegalArgumentException)
+      }
+  }
+
+  def cookieBackingStore[F[_]: Sync]: BackingStore[F, UUID, AuthenticatedCookie[HMACSHA256, Int]] =
+    dummyBackingStore[F, UUID, AuthenticatedCookie[HMACSHA256, Int]](_.id)
+
+  // We create a way to store our users. You can attach this to say, your doobie accessor
+  // def userStore[F[_]]: BackingStore[F, Int, User] =
+  //   dummyBackingStore[F, Int, User](_.id)
+
+}
+
 
 object SignedCookieExample {
 
