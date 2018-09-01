@@ -23,7 +23,7 @@ object GraphQLExecutorTest extends TestSuite {
       val response = sendQuery(query)
       assert(response.status == Status.Ok)
       val responseBody = body(response)
-      println(parse(responseBody).right.get.spaces2)
+      parse(responseBody).right.get.spaces2
     }
 
     "Query storylines" - {
@@ -37,7 +37,7 @@ object GraphQLExecutorTest extends TestSuite {
         """.stripMargin
       val response = sendQuery(query)
       val responseBody = body(response)
-      println(parse(responseBody).right.get.spaces2)
+      parse(responseBody).right.get.spaces2
     }
   }
 

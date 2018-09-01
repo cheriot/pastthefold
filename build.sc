@@ -90,8 +90,9 @@ object api extends SbtModule with GoogleAppEngine {
 
     ivy"org.typelevel::cats-core:$catsVersion",
     ivy"org.typelevel::cats-effect:0.10.1",
-
     ivy"org.typelevel::kittens:1.1.0",
+
+    ivy"com.typesafe:config:1.3.2",
 
     ivy"org.sangria-graphql::sangria:1.4.1",
     ivy"org.sangria-graphql::sangria-circe:1.2.1",

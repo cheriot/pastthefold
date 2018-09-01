@@ -2,19 +2,19 @@ package news.pastthefold.auth
 
 import java.util.UUID
 
-import cats.Id
 import cats.effect.IO
+import news.pastthefold.Config
 import news.pastthefold.model.User
 import org.http4s.dsl.io._
 import org.http4s.{Request, Response}
 import tsec.authentication.{AuthenticatedCookie, BackingStore}
-import tsec.mac.jca.{HMACSHA256, MacSigningKey}
+import tsec.mac.jca.HMACSHA256
 import utest._
 
 
 object SecureRequestServiceTest extends TestSuite {
 
-  val key: MacSigningKey[HMACSHA256] = HMACSHA256.generateKey[Id]
+  val key = Config.cookieSigningKey
   val user = FakeData.user
   val userBackingStore: BackingStore[IO, Int, User] = Mocks.userBackingStore
   userBackingStore.put(user)
