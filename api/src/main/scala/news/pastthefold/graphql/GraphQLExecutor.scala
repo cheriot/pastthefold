@@ -9,6 +9,7 @@ import io.circe.generic.auto._
 import io.circe.jawn._
 import io.circe.optics.JsonPath._
 import io.circe.syntax._
+import news.pastthefold.model.User
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.io._
@@ -24,15 +25,15 @@ import scala.util.{Failure, Success}
 
 class GraphQLExecutor {
 
-  def httpGraphQL(query: String): IO[Response[IO]] = {
+  def httpGraphQL(query: String, userOpt: Option[User]): IO[Response[IO]] = {
     // This is actually not going to be json. runGraphQL will need to accept a query: String
     parse(query) match {
-      case Right(json: Json) => httpGraphQL(json)
+      case Right(json: Json) => httpGraphQL(json, userOpt)
       case Left(parsingFailure) => BadRequest(formatError(s"Error json parsing query. ${parsingFailure.message}"))
     }
   }
 
-  def httpGraphQL(body: Json): IO[Response[IO]] = {
+  def httpGraphQL(body: Json, userOpt: Option[User]): IO[Response[IO]] = {
     val result = IO {
       runGraphQL(body)
         .map(Ok(_))

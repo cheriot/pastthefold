@@ -113,6 +113,20 @@ object api extends SbtModule with GoogleAppEngine {
     )
     override def testFrameworks = Seq("utest.runner.Framework")
   }
+
+  object it extends Tests {
+    override def ivyDeps = Agg(
+      ivy"com.lihaoyi::utest:0.6.3",
+      ivy"io.circe::circe-parser:$circeVersion",
+    )
+    override def intellijModulePath = millSourcePath / 'src / 'it
+    override def sources = T.sources(
+      millSourcePath / 'src / 'it / 'scala,
+      millSourcePath / 'src / 'it / 'java
+    )
+    override def resources = T.sources{ millSourcePath / 'src / 'it / 'resources }
+    override def testFrameworks = Seq("utest.runner.Framework")
+  }
 }
 
 trait GoogleAppEngine extends JavaModule {

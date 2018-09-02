@@ -119,6 +119,7 @@ object SignedCookieExample {
       val r: UserAwareRequest[IO, User, AuthenticatedCookie[HMACSHA256, Int]] = request
       val foo: (User, AuthenticatedCookie[HMACSHA256, Int]) = r.maybe.get
       val userId = 123
+      // val u: Option[(User, AuthenticatedCookie[HMACSHA256, Int])] = user
       val authedCookie: IO[AuthenticatedCookie[HMACSHA256, Int]] = Auth.authenticator.create(userId)
       businessLogic(r)
       businessLogic(foo)

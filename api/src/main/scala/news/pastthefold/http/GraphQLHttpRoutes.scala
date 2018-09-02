@@ -2,10 +2,13 @@ package news.pastthefold.http
 
 import cats.effect._
 import io.circe.Json
+import news.pastthefold.auth.SecureRequestService
+import news.pastthefold.auth.SecureRequestService.AuthService
 import news.pastthefold.graphql.GraphQLExecutor
-import org.http4s.{HttpService, Request, StaticFile}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
+import org.http4s.{HttpService, Request, StaticFile}
+import tsec.authentication._
 
 class GraphQLHttpRoutes extends Http4sDsl[IO] {
   def helloWorldHttpService = HttpService[IO] {
@@ -14,6 +17,7 @@ class GraphQLHttpRoutes extends Http4sDsl[IO] {
   }
 
   import org.http4s.headers.`Content-Type`
+
   object QueryParamMatcher extends QueryParamDecoderMatcher[String]("query")
 
   def contentType(request: Request[IO], str: String): Boolean =
@@ -23,27 +27,34 @@ class GraphQLHttpRoutes extends Http4sDsl[IO] {
       .filter(_ == str)
       .isDefined
 
-  /** Extend to fully implement https://graphql.org/learn/serving-over-http/#http-methods-headers-and-body */
-  def endpoints(graphQLExecutor: GraphQLExecutor) = HttpService[IO] {
-    case GET -> Root / "graphql" :? QueryParamMatcher(query) =>
-      graphQLExecutor.httpGraphQL(query)
+  // if contentType(request, "application/json")
 
-    case request @ POST -> Root / "graphql" if contentType(request, "application/json") =>
-      request.as[Json].flatMap { body =>
-        graphQLExecutor.httpGraphQL(body)
+  /** Extend to fully implement https://graphql.org/learn/serving-over-http/#http-methods-headers-and-body */
+  def endpoints(graphQLExecutor: GraphQLExecutor): AuthService[IO] = TSecAuthService {
+    case GET -> Root / "graphql" :? QueryParamMatcher(query) asAuthed user =>
+      graphQLExecutor.httpGraphQL(query, Some(user))
+
+    case authReq@POST -> Root / "graphql" asAuthed user =>
+      authReq.request.as[Json].flatMap { body =>
+        graphQLExecutor.httpGraphQL(body, Some(user))
       }
 
-    case request @ GET -> Root / "explore" =>
-      StaticFile.fromResource("/graphiql.html", Some(request))
+    case authReq@GET -> Root / "explore" asAuthed _ =>
+      StaticFile.fromResource("/graphiql.html", Some(authReq.request))
         .getOrElseF(NotFound("Can't find the graphiql html."))
 
-    case (GET | POST) -> Root / "graphql" =>
+    case (GET | POST) -> Root / "graphql" asAuthed _ =>
       BadRequest("Invalid GraphQL query.")
   }
 
 }
 
 object GraphQLHttpRoutes {
-  def endpoints(graphQLExecutor: GraphQLExecutor): HttpService[IO] =
-    new GraphQLHttpRoutes().endpoints(graphQLExecutor)
+  def endpoints(
+                 graphQLExecutor: GraphQLExecutor,
+                 secureRequestService: SecureRequestService[IO]
+               ): HttpService[IO] =
+    secureRequestService.liftService(
+      new GraphQLHttpRoutes().endpoints(graphQLExecutor)
+    )
 }

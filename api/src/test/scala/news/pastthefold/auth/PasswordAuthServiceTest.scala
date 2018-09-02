@@ -2,7 +2,8 @@ package news.pastthefold.auth
 
 import cats.effect.IO
 import news.pastthefold.dao.UserAuthDAO
-import news.pastthefold.model.{Salt, UntrustedPassword, User}
+import news.pastthefold.http.LoginForm
+import news.pastthefold.model.{Salt, UntrustedPassword}
 import tsec.common.{VerificationFailed, Verified}
 import tsec.passwordhashers.PasswordHash
 import utest._
@@ -42,7 +43,7 @@ object PasswordAuthServiceTest extends TestSuite {
         userAuthDAO = buildUserAuthDAO(userOpt = Some(user)),
         buildPasswordHashingService(Verified)
       )
-      val Right(foundUser) = instance.login("fake@email.com", UntrustedPassword(password)).unsafeRunSync()
+      val Right(foundUser) = instance.login(LoginForm("fake@email.com", UntrustedPassword(password))).unsafeRunSync()
       assert(foundUser == user)
     }
 
@@ -52,7 +53,7 @@ object PasswordAuthServiceTest extends TestSuite {
         userAuthDAO = buildUserAuthDAO(userOpt = Some(user)),
         buildPasswordHashingService(VerificationFailed)
       )
-      val Left(error) = instance.login("fake@email.com", UntrustedPassword(password)).unsafeRunSync()
+      val Left(error) = instance.login(LoginForm("fake@email.com", UntrustedPassword(password))).unsafeRunSync()
       assert(error == WrongPasswordError)
     }
 

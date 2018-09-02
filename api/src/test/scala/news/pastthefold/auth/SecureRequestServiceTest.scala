@@ -4,11 +4,11 @@ import java.util.UUID
 
 import cats.effect.IO
 import news.pastthefold.Config
+import news.pastthefold.auth.SecureRequestService.AuthCookie
 import news.pastthefold.model.User
 import org.http4s.dsl.io._
 import org.http4s.{Request, Response}
-import tsec.authentication.{AuthenticatedCookie, BackingStore}
-import tsec.mac.jca.HMACSHA256
+import tsec.authentication.BackingStore
 import utest._
 
 
@@ -18,7 +18,7 @@ object SecureRequestServiceTest extends TestSuite {
   val user = FakeData.user
   val userBackingStore: BackingStore[IO, Int, User] = Mocks.userBackingStore
   userBackingStore.put(user)
-  val cookieBackingStore: BackingStore[IO, UUID, AuthenticatedCookie[HMACSHA256, Int]] = Mocks.cookieBackingStore
+  val cookieBackingStore: BackingStore[IO, UUID, AuthCookie] = Mocks.cookieBackingStore
 
   def build() = new SignedCookieRequestHandler[IO](
     userBackingStore,

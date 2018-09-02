@@ -4,21 +4,28 @@ import java.util.UUID
 
 import cats.effect.Sync
 import cats.implicits._
+import news.pastthefold.auth.SecureRequestService.{AuthCookie, AuthService}
 import news.pastthefold.model.User
-import org.http4s.Response
-import tsec.authentication.{AuthenticatedCookie, BackingStore, SecuredRequestHandler, SignedCookieAuthenticator, TSecCookieSettings}
+import org.http4s.{HttpService, Response}
+import tsec.authentication.{AuthenticatedCookie, BackingStore, SecuredRequestHandler, SignedCookieAuthenticator, TSecAuthService, TSecCookieSettings, UserAwareService}
 import tsec.mac.jca.{HMACSHA256, MacSigningKey}
 
 import scala.concurrent.duration._
 
 trait SecureRequestService[F[_]] {
   def embedAuth(user: User, response: Response[F]): F[Response[F]]
+  def liftUserAware(service: UserAwareService[User, AuthCookie, F]): HttpService[F]
+  def liftService(service: AuthService[F]): HttpService[F]
 }
 
 object SecureRequestService {
+
+  type AuthService[F[_]] = TSecAuthService[User, AuthCookie, F]
+  type AuthCookie = AuthenticatedCookie[HMACSHA256, Int]
+
   def apply[F[_] : Sync](
                           userBackingStore: BackingStore[F, Int, User],
-                          cookieBackingStore: BackingStore[F, UUID, AuthenticatedCookie[HMACSHA256, Int]],
+                          cookieBackingStore: BackingStore[F, UUID, AuthCookie],
                           key: MacSigningKey[HMACSHA256]
                         ): SecureRequestService[F] =
     new SignedCookieRequestHandler[F](
@@ -36,7 +43,7 @@ object SecureRequestService {
   */
 class SignedCookieRequestHandler[F[_] : Sync](
                                                userBackingStore: BackingStore[F, Int, User],
-                                               cookieBackingStore: BackingStore[F, UUID, AuthenticatedCookie[HMACSHA256, Int]],
+                                               cookieBackingStore: BackingStore[F, UUID, AuthCookie],
                                                key: MacSigningKey[HMACSHA256]
                                              ) extends SecureRequestService[F] {
 
@@ -63,4 +70,13 @@ class SignedCookieRequestHandler[F[_] : Sync](
       authCookie <- Auth.authenticator.create(user.id)
     } yield Auth.authenticator.embed(response, authCookie)
 
+  def liftUserAware(
+    service: UserAwareService[User, AuthCookie, F]
+  ): HttpService[F] =
+    Auth.liftUserAware(service)
+
+  override def liftService(
+                            service: TSecAuthService[User, AuthCookie, F]
+                          ): HttpService[F] =
+    Auth.liftService(service)
 }

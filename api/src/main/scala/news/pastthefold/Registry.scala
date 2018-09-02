@@ -27,9 +27,9 @@ class Registry {
       passwordHashingService,
       secureRequestService
     )
-    val authHttpEndpoints = AuthHttpRoutes.endpoints(passwordAuthService)
+    val authHttpEndpoints = AuthHttpRoutes.endpoints(passwordAuthService, secureRequestService)
     val graphQLExecutor = GraphQLExecutor()
-    val graphQLHttpEndpoints = GraphQLHttpRoutes.endpoints(graphQLExecutor)
+    val graphQLHttpEndpoints = GraphQLHttpRoutes.endpoints(graphQLExecutor, secureRequestService)
     authHttpEndpoints combineK graphQLHttpEndpoints
   }
 }

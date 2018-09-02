@@ -2,14 +2,13 @@ package news.pastthefold.auth
 
 import java.util.UUID
 
-import tsec.authentication.{AuthenticatedCookie, BackingStore}
-import tsec.mac.jca.HMACSHA256
 import cats.data.OptionT
 import cats.effect.{IO, Sync}
+import news.pastthefold.auth.SecureRequestService.AuthCookie
 import news.pastthefold.dao.UserAuthDAO
 import news.pastthefold.model.{Salt, UntrustedPassword, User}
-import org.http4s.Response
-import tsec.authentication.BackingStore
+import org.http4s.{HttpService, Response}
+import tsec.authentication.{BackingStore, UserAwareService}
 import tsec.common.{VerificationFailed, VerificationStatus}
 import tsec.passwordhashers.PasswordHash
 import tsec.passwordhashers.jca.HardenedSCrypt
@@ -20,15 +19,10 @@ object Mocks {
 
   class MockUserAuthDAO extends UserAuthDAO[IO] {
     override def findByEmail(email: String): IO[User] = ???
-
     override def updatePassword(user: User, salt: Salt, passwordHash: PasswordHash[HardenedSCrypt]): IO[User] = ???
-
     override def put(elem: User): IO[User] = ???
-
     override def update(v: User): IO[User] = ???
-
     override def delete(id: Int): IO[Unit] = ???
-
     override def get(id: Int): OptionT[IO, User] = ???
   }
 
@@ -54,19 +48,17 @@ object Mocks {
 
   def buildSecureRequestService = new SecureRequestService[IO] {
     override def embedAuth(user: User, response: Response[IO]): IO[Response[IO]] = ???
+    override def liftUserAware(service: UserAwareService[User, AuthCookie, IO]): HttpService[IO] = ???
   }
 
   class MockBackingStore[F[_], Id, Value] extends BackingStore [F, Id, Value] {
     override def put(elem: Value): F[Value] = ???
-
     override def update(v: Value): F[Value] = ???
-
     override def delete(id: Id): F[Unit] = ???
-
     override def get(id: Id): OptionT[F, Value] = ???
   }
 
-  class MockCookieStore[F[_]] extends MockBackingStore[F, UUID, AuthenticatedCookie[HMACSHA256, Int]]
+  class MockCookieStore[F[_]] extends MockBackingStore[F, UUID, AuthCookie]
 
   def dummyBackingStore[F[_], I, V](getId: V => I)(implicit F: Sync[F]) = new BackingStore[F, I, V] {
     private val storageMap = mutable.HashMap.empty[I, V]
@@ -94,8 +86,8 @@ object Mocks {
       }
   }
 
-  def cookieBackingStore[F[_]: Sync]: BackingStore[F, UUID, AuthenticatedCookie[HMACSHA256, Int]] =
-    dummyBackingStore[F, UUID, AuthenticatedCookie[HMACSHA256, Int]](_.id)
+  def cookieBackingStore[F[_]: Sync]: BackingStore[F, UUID, AuthCookie] =
+    dummyBackingStore[F, UUID, AuthCookie](_.id)
 
   def userBackingStore[F[_]: Sync]: BackingStore[F, Int, User] =
     dummyBackingStore[F, Int, User](_.id)
