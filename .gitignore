@@ -1,5 +1,6 @@
 out
 .idea
 .idea_modules
-ui/node_modules/
+web/node_modules/
+web/.next/
 api/src/main/resources/secrets.conf
