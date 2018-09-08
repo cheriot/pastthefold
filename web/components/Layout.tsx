@@ -1,3 +1,4 @@
+import * as React from 'react'
 import Header from './Header'
 
 const layoutStyle = {
@@ -6,7 +7,7 @@ const layoutStyle = {
   border: '1px solid #DDD'
 }
 
-const Layout = (props) => (
+const Layout: React.SFC = (props) => (
   <div style={layoutStyle}>
     <Header />
     {props.children}

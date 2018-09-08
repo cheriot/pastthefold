@@ -4,14 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "node server.js",
+    "dev": "node server.ts",
     "build": "next build",
-    "start": "NODE_ENV=production node server.js"
+    "start": "NODE_ENV=production node server.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/next": "^6.1.4",
+    "@types/styled-jsx": "^2.2.5",
     "@zeit/next-typescript": "^1.1.0",
     "express": "^4.16.3",
     "isomorphic-unfetch": "^2.1.1",
@@ -21,6 +23,7 @@
     "react-markdown": "^3.6.0"
   },
   "devDependencies": {
+    "@types/node": "^10.9.4",
     "fork-ts-checker-webpack-plugin": "^0.4.9",
     "tslint": "^5.11.0",
     "typescript": "^3.0.3"
