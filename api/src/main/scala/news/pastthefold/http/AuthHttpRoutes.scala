@@ -3,7 +3,7 @@ package news.pastthefold.http
 import cats.effect.{Effect, Sync}
 import cats.implicits._
 import fs2._
-import news.pastthefold.auth.SecureRequestService.AuthCookie
+import news.pastthefold.auth.SecureRequestService.UserService
 import news.pastthefold.auth._
 import news.pastthefold.model.{UntrustedPassword, User}
 import org.http4s._
@@ -11,8 +11,7 @@ import org.http4s.dsl.Http4sDsl
 import tsec.authentication._
 
 class AuthHttpRoutes[F[_] : Effect](
-                                     userAuthService: PasswordAuthService[F],
-                                     secureRequestService: SecureRequestService[F]
+                                     userAuthService: PasswordAuthService[F]
                                    ) extends Http4sDsl[F] {
 
   def extractLoginForm(urlForm: UrlForm): Either[LoginError, LoginForm] =
@@ -29,8 +28,8 @@ class AuthHttpRoutes[F[_] : Effect](
   def unauthenticatedError(loginError: LoginError): F[Response[F]] =
     Sync[F].pure(Response(status = loginError.status))
 
-  def endpoints(): UserAwareService[User, AuthCookie, F] = UserAwareService {
-    case awareReq@POST -> Root / "login" asAware userOpt =>
+  def endpoints(): UserService[F] = UserAwareService {
+    case awareReq@POST -> Root / "login" asAware _ =>
       awareReq.request.decode[UrlForm] { urlForm =>
         extractLoginForm(urlForm)
           .flatTraverse(userAuthService.login)
@@ -40,9 +39,9 @@ class AuthHttpRoutes[F[_] : Effect](
           }
       }
 
-    case req@POST -> Root / "logout" asAware userOpt =>
+    case POST -> Root / "logout" asAware userOpt =>
       userOpt match {
-        case Some(user) => ???
+        case Some(_) => ???
         case None => Ok()
       }
   }
@@ -55,6 +54,6 @@ object AuthHttpRoutes {
                                 secureRequestService: SecureRequestService[F]
                               ): HttpService[F] =
     secureRequestService.liftUserAware(
-      new AuthHttpRoutes[F](passwordAuthService, secureRequestService).endpoints()
+      new AuthHttpRoutes[F](passwordAuthService).endpoints()
     )
 }

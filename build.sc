@@ -84,6 +84,7 @@ object api extends SbtModule with GoogleAppEngine {
     ivy"org.http4s::http4s-circe:$http4sVersion",
     ivy"org.http4s::http4s-dsl:$http4sVersion",
     ivy"org.http4s::http4s-servlet:$http4sVersion",
+    ivy"org.http4s::http4s-testing:$http4sVersion",
 
     ivy"io.circe::circe-generic:$circeVersion",
     ivy"io.circe::circe-optics:$circeVersion",

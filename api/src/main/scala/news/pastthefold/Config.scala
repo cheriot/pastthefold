@@ -4,6 +4,7 @@ import cats.Id
 import com.typesafe.config._
 import tsec.mac.jca.{HMACSHA256, MacSigningKey}
 import org.bouncycastle.util.encoders.Hex
+import scala.concurrent.duration._
 
 object Config {
 
@@ -15,4 +16,6 @@ object Config {
     require(bytes.length == 32)
     HMACSHA256.buildKey[Id](bytes)
   }
+
+  val idleTimeout = 2.seconds
 }

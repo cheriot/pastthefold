@@ -10,9 +10,8 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 class Servlet extends Http4sServlet[IO](
-  // TODO actually construct all the routes and use them here.
   Registry().allHttpEndpoints,
-  2.seconds,
+  Config.idleTimeout,
   ExecutionContext.global,
   BlockingServletIo[IO](Servlet.DefaultChunkSize),
   DefaultServiceErrorHandler

@@ -4,7 +4,7 @@ import java.util.UUID
 
 import cats.data.OptionT
 import cats.effect.{IO, Sync}
-import news.pastthefold.auth.SecureRequestService.AuthCookie
+import news.pastthefold.auth.SecureRequestService.{AuthCookie, AuthService}
 import news.pastthefold.dao.UserAuthDAO
 import news.pastthefold.model.{Salt, UntrustedPassword, User}
 import org.http4s.{HttpService, Response}
@@ -18,7 +18,8 @@ import scala.collection.mutable
 object Mocks {
 
   class MockUserAuthDAO extends UserAuthDAO[IO] {
-    override def findByEmail(email: String): IO[User] = ???
+    override def create(email: String): IO[User] = ???
+    override def findByEmail(email: String): IO[Option[User]] = ???
     override def updatePassword(user: User, salt: Salt, passwordHash: PasswordHash[HardenedSCrypt]): IO[User] = ???
     override def put(elem: User): IO[User] = ???
     override def update(v: User): IO[User] = ???
@@ -27,9 +28,8 @@ object Mocks {
   }
 
   def buildUserAuthDAO(userOpt: Option[User] = None) = new MockUserAuthDAO {
-    override def findByEmail(email: String): IO[User] =
-      if (userOpt.isDefined) IO { userOpt.get }
-      else IO.raiseError(new Throwable("user not found"))
+    override def findByEmail(email: String): IO[Option[User]] =
+      IO { userOpt }
 
     override def get(id: Int): OptionT[IO, User] = OptionT(IO.pure(userOpt))
   }
@@ -49,6 +49,7 @@ object Mocks {
   def buildSecureRequestService = new SecureRequestService[IO] {
     override def embedAuth(user: User, response: Response[IO]): IO[Response[IO]] = ???
     override def liftUserAware(service: UserAwareService[User, AuthCookie, IO]): HttpService[IO] = ???
+    override def liftService(service: AuthService[IO]): HttpService[IO] = ???
   }
 
   class MockBackingStore[F[_], Id, Value] extends BackingStore [F, Id, Value] {

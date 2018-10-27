@@ -6,6 +6,7 @@ import org.http4s.Status._
 sealed abstract class LoginError(val status: Status)
 case object NoEmailError extends LoginError(BadRequest)
 case object NoPasswordError extends LoginError(BadRequest)
+case object EmailNotFoundError extends LoginError(Unauthorized)
 case object WrongPasswordError extends LoginError(Unauthorized)
 
 sealed abstract class UpdatePasswordError(val status: Status)

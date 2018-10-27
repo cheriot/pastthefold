@@ -61,8 +61,8 @@ object PasswordAuthServiceTest extends TestSuite {
       val instance = build(
         userAuthDAO = buildUserAuthDAO(userOpt = None)
       )
-      // instance.login("fake@email.com", UntrustedPassword(password)).unsafeRunSync()
-      // TODO capture this error properly when the UserDAO api is better.
+      val Left(error) = instance.login(LoginForm("fake@email.com", UntrustedPassword(password))).unsafeRunSync()
+      assert(error == EmailNotFoundError)
     }
   }
 }

@@ -3,6 +3,7 @@ package news.pastthefold
 import cats._
 import cats.implicits._
 import cats.effect.IO
+import fs2.Chunk
 import org.http4s.{Request, _}
 import utest._
 
@@ -14,14 +15,23 @@ object AuthIntTest extends TestSuite {
   }
 
   val tests = Tests {
-    val endpoints = Registry().allHttpEndpoints
+    val endpoints = Registry().authEndpoints
+
     "login" - {
 
-      val response: Response[IO] = endpoints.run(
-        Request(Method.POST, Uri(path = "/login"))
-      ).value.unsafeRunSync().get
+      val form = UrlForm("email" -> "fake@fake.fake", "password" -> "notreal")
+      val req = Request[IO](Method.POST, Uri(path = "/login"))
+        .withBody(form)
+        .unsafeRunSync()
+      val response: Response[IO] = endpoints
+        .run(req)
+        .value
+        .unsafeRunSync()
+        .get
 
-      response.cookies.find(_.name == "auth")
+      assert(response.cookies.find(_.name == "auth").isDefined)
+
+      requestWithAuth(response, Request(Method.POST, Uri(path = "/graphql")))
     }
   }
 }

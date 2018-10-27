@@ -8,14 +8,17 @@ import news.pastthefold.dao.UserAuthDAO
 import news.pastthefold.http.{LoginForm, UpdatePasswordForm}
 import news.pastthefold.model.{Salt, UntrustedPassword, User}
 import org.http4s.Response
-import tsec.common.{VerificationFailed, Verified}
+import tsec.common.{VerificationFailed, VerificationStatus, Verified}
 import tsec.passwordhashers.PasswordHash
 import tsec.passwordhashers.jca._
 
 trait PasswordAuthService[F[_]] {
   def createPassword(password: String): F[Either[CreatePasswordError, EncryptedPassword]]
+
   def updatePassword(form: UpdatePasswordForm): F[Either[UpdatePasswordError, User]]
+
   def login(form: LoginForm): F[Either[LoginError, User]]
+
   def embedAuth(user: User, response: Response[F]): F[Response[F]]
 }
 
@@ -67,18 +70,27 @@ class PasswordAuthServiceImpl[F[_] : Effect](
     }.flatten.value
   }
 
-  override def login(form: LoginForm): F[Either[LoginError, User]] =
-    for {
-      user <- userAuthDAO.findByEmail(form.email)
-      pwStatus <- passwordEncryptionService.verifyPassword(
-        user.salt,
-        form.password,
-        user.passwordHash
+  override def login(form: LoginForm): F[Either[LoginError, User]] = {
+    def verify(user: User): F[Either[LoginError, User]] =
+      for {
+        pwStatus <- passwordEncryptionService.verifyPassword(
+          user.salt,
+          form.password,
+          user.passwordHash)
+      } yield pwStatus match {
+        case Verified => Right(user)
+        case VerificationFailed => Left(WrongPasswordError)
+      }
+
+    userAuthDAO
+      .findByEmail(form.email)
+      .flatMap(userOpt =>
+        userOpt match {
+          case Some(user) => verify(user)
+          case None => Effect[F].pure(Left(EmailNotFoundError))
+        }
       )
-    } yield pwStatus match {
-      case Verified => Right(user)
-      case VerificationFailed => Left(WrongPasswordError)
-    }
+  }
 
   override def embedAuth(user: User, response: Response[F]): F[Response[F]] =
     secureRequestService.embedAuth(user, response)

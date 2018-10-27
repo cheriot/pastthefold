@@ -3,7 +3,7 @@ package news.pastthefold.http
 import cats.effect._
 import io.circe.Json
 import news.pastthefold.auth.SecureRequestService
-import news.pastthefold.auth.SecureRequestService.AuthService
+import news.pastthefold.auth.SecureRequestService.{AuthService, UserService}
 import news.pastthefold.graphql.GraphQLExecutor
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
@@ -30,20 +30,20 @@ class GraphQLHttpRoutes extends Http4sDsl[IO] {
   // if contentType(request, "application/json")
 
   /** Extend to fully implement https://graphql.org/learn/serving-over-http/#http-methods-headers-and-body */
-  def endpoints(graphQLExecutor: GraphQLExecutor): AuthService[IO] = TSecAuthService {
-    case GET -> Root / "graphql" :? QueryParamMatcher(query) asAuthed user =>
-      graphQLExecutor.httpGraphQL(query, Some(user))
+  def endpoints(graphQLExecutor: GraphQLExecutor): UserService[IO] = UserAwareService {
+    case GET -> Root / "graphql" :? QueryParamMatcher(query) asAware _ =>
+      graphQLExecutor.httpGraphQL(query, None)
 
-    case authReq@POST -> Root / "graphql" asAuthed user =>
-      authReq.request.as[Json].flatMap { body =>
-        graphQLExecutor.httpGraphQL(body, Some(user))
+    case awareReq@POST -> Root / "graphql" asAware _ =>
+      awareReq.request.as[Json].flatMap { body =>
+        graphQLExecutor.httpGraphQL(body, None)
       }
 
-    case authReq@GET -> Root / "explore" asAuthed _ =>
-      StaticFile.fromResource("/graphiql.html", Some(authReq.request))
+    case awareReq@GET -> Root / "explore" asAware _ =>
+      StaticFile.fromResource("/graphiql.html", Some(awareReq.request))
         .getOrElseF(NotFound("Can't find the graphiql html."))
 
-    case (GET | POST) -> Root / "graphql" asAuthed _ =>
+    case (GET | POST) -> Root / "graphql" asAware _ =>
       BadRequest("Invalid GraphQL query.")
   }
 
@@ -54,7 +54,7 @@ object GraphQLHttpRoutes {
                  graphQLExecutor: GraphQLExecutor,
                  secureRequestService: SecureRequestService[IO]
                ): HttpService[IO] =
-    secureRequestService.liftService(
+    secureRequestService.liftUserAware(
       new GraphQLHttpRoutes().endpoints(graphQLExecutor)
     )
 }

@@ -11,7 +11,9 @@ import tsec.passwordhashers.jca.HardenedSCrypt
 import scala.collection.mutable
 
 trait UserAuthDAO[F[_]] extends BackingStore[F, Int, User] {
-  def findByEmail(email: String): F[User]
+  def create(email: String): F[User]
+
+  def findByEmail(email: String): F[Option[User]]
 
   def updatePassword(user: User, salt: Salt, passwordHash: PasswordHash[HardenedSCrypt]): F[User]
 }
@@ -22,9 +24,16 @@ class MemoryUserAuthDAO[F[_]: Sync] extends UserAuthDAO[F] {
 
   private val getId: User => Int = _.id
 
-  override def findByEmail(email: String): F[User] =
+
+  override def create(email: String): F[User] = {
+    // cannot use an existing email
+    findByEmail(email)
+    ???
+  }
+
+  override def findByEmail(email: String): F[Option[User]] =
     Sync[F].pure(
-      storageMap.values.find(_.email === email).get
+      storageMap.values.find(_.email === email)
     )
 
   override def updatePassword(user: User, salt: Salt, passwordHash: PasswordHash[HardenedSCrypt]): F[User] =

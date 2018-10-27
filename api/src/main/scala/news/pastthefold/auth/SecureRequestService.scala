@@ -20,6 +20,7 @@ trait SecureRequestService[F[_]] {
 
 object SecureRequestService {
 
+  type UserService[F[_]] = UserAwareService[User, AuthCookie, F]
   type AuthService[F[_]] = TSecAuthService[User, AuthCookie, F]
   type AuthCookie = AuthenticatedCookie[HMACSHA256, Int]
 
@@ -78,5 +79,5 @@ class SignedCookieRequestHandler[F[_] : Sync](
   override def liftService(
                             service: TSecAuthService[User, AuthCookie, F]
                           ): HttpService[F] =
-    Auth.liftService(service)
+    Auth.liftWithFallthrough(service)
 }

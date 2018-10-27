@@ -1,76 +1,33 @@
-"A character in the Star Wars Trilogy"
-interface Character {
-  "The id of the character."
+"A published article."
+type Article {
+  "Uniquely identify this article. Persistent across edits."
   id: String!
 
-  "The name of the character."
-  name: String
+  "Fully qualified URI where this article can be read."
+  uri: String!
 
-  "The friends of the character, or an empty list if they have none."
-  friends: [Character!]!
-
-  "Which movies they appear in."
-  appearsIn: [Episode]
-}
-
-"A mechanical creature in the Star Wars universe."
-type Droid implements Character {
-  "The id of the droid."
-  id: String!
-
-  "The name of the droid."
-  name: String
-
-  "The friends of the droid, or an empty list if they have none."
-  friends: [Character!]!
-
-  "Which movies they appear in."
-  appearsIn: [Episode]
-
-  "The primary function of the droid."
-  primaryFunction: String
-}
-
-"One of the films in the Star Wars Trilogy"
-enum Episode {
-  "Released in 1977."
-  NEWHOPE
-
-  "Released in 1980."
-  EMPIRE
-
-  "Released in 1983."
-  JEDI
-}
-
-"A humanoid creature in the Star Wars universe."
-type Human implements Character {
-  "The id of the human."
-  id: String!
-
-  "The name of the human."
-  name: String
-
-  "The friends of the human, or an empty list if they have none."
-  friends: [Character!]!
-
-  "Which movies they appear in."
-  appearsIn: [Episode]
-
-  "The home planet of the human, or null if unknown."
-  homePlanet: String
+  "UI Text to label an article."
+  title: String!
 }
 
 type Query {
-  hero(
-    "If omitted, returns the hero of the whole saga. If provided, returns the hero of that particular episode."
-    episode: Episode): Character! @deprecated(reason: "Use `human` or `droid` fields instead")
-  human(
-    "id of the character"
-    id: String!): Human
-  droid(
-    "id of the character"
-    id: String!): Droid!
-  humans(limit: Int = 20, offset: Int = 0): [Human!]!
-  droids(limit: Int = 20, offset: Int = 0): [Droid!]!
+  storyline(
+    "Unique identifier of this thing."
+    id: String!): Storyline!
+  storylines(offset: Long = 0, limit: Long = 20): [Storyline!]!
+}
+
+"A series of articles that form a coherent line of investigation."
+type Storyline {
+  "Uniquely identify a storyline."
+  id: String!
+
+  "A more human friendly identifier unique among storylines."
+  slug: String!
+
+  "UI Text to label a storyline."
+  title: String!
+
+  "Most recent articles added to the storyline."
+  articles: [Article!]!
 }
