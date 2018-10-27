@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { NextStatelessComponent } from 'next'
-import { Show } from '../models/tvmaze'
+import { Show } from '../lib/models/tvmaze'
 import fetch from 'isomorphic-unfetch'
 import Link from 'next/link'
 import Layout from '../components/Layout'

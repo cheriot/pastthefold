@@ -1,5 +1,5 @@
 import { NextStatelessComponent } from 'next'
-import { Show } from '../models/tvmaze'
+import { Show } from '../lib/models/tvmaze'
 import Layout from '../components/Layout'
 import fetch from 'isomorphic-unfetch'
 import Markdown from 'react-markdown'
