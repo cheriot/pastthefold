@@ -5,7 +5,6 @@ import fs2.StreamApp.ExitCode
 import fs2.{Stream, StreamApp}
 import org.http4s.HttpService
 import org.http4s.server.blaze._
-import scala.concurrent.duration._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

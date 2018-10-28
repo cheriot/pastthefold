@@ -14,21 +14,38 @@ class AuthHttpRoutes[F[_] : Effect](
                                      userAuthService: PasswordAuthService[F]
                                    ) extends Http4sDsl[F] {
 
-  def extractLoginForm(urlForm: UrlForm): Either[LoginError, LoginForm] =
+  def extractLoginForm(urlForm: UrlForm): Either[AuthError, LoginForm] =
     for {
       email <- Either.fromOption(urlForm.getFirst("email"), NoEmailError)
       password <- Either.fromOption(urlForm.getFirst("password"), NoPasswordError)
     } yield LoginForm(email, UntrustedPassword(password))
+
+  def extractNewAccountForm(urlForm: UrlForm): Either[AuthError, CreateAccountForm] =
+    for {
+      email <- Either.fromOption(urlForm.getFirst("email"), AccountEmailError)
+      password <- Either.fromOption(urlForm.getFirst("password"), AccountPasswordError)
+    } yield CreateAccountForm(email, UntrustedPassword(password))
+
 
   def authenticatedOk(user: User, msg: String) = {
     val response = Response[F](body = Stream(msg).through(fs2.text.utf8Encode))
     userAuthService.embedAuth(user, response)
   }
 
-  def unauthenticatedError(loginError: LoginError): F[Response[F]] =
+  def unauthenticatedError(loginError: HttpStatusError): F[Response[F]] =
     Sync[F].pure(Response(status = loginError.status))
 
   def endpoints(): UserService[F] = UserAwareService {
+    case awareReq@POST -> Root / "create" asAware _ =>
+      awareReq.request.decode[UrlForm] { urlForm =>
+        extractNewAccountForm(urlForm)
+          .flatTraverse(userAuthService.createAccount)
+          .flatMap {
+            case Right(user) => authenticatedOk(user, s"Success. Acount created for ${user.email}")
+            case Left(error) => unauthenticatedError(error)
+          }
+      }
+
     case awareReq@POST -> Root / "login" asAware _ =>
       awareReq.request.decode[UrlForm] { urlForm =>
         extractLoginForm(urlForm)

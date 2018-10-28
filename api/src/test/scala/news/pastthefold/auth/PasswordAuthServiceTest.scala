@@ -26,15 +26,15 @@ object PasswordAuthServiceTest extends TestSuite {
   val tests = Tests {
     "createPassword valid" - {
       val instance = build()
-      val Right((salt, passwordHash)) = instance.createPassword(password).unsafeRunSync()
+      val Right((salt, passwordHash)) = instance.createPassword(password).value.unsafeRunSync()
       assert(salt == Salt("fake-salt"))
       assert(passwordHash == PasswordHash("hash-of-supersecret"))
     }
 
     "createPassword invalid" - {
       val instance = build()
-      val Left(error) = instance.createPassword("short").unsafeRunSync()
-      assert(error == CreatePasswordError())
+      val Left(error) = instance.createPassword("short").value.unsafeRunSync()
+      assert(error == PasswordRequirementsError)
     }
 
     "login valid" - {

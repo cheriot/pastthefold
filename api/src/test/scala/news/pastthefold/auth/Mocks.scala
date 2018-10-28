@@ -2,7 +2,7 @@ package news.pastthefold.auth
 
 import java.util.UUID
 
-import cats.data.OptionT
+import cats.data.{EitherT, OptionT}
 import cats.effect.{IO, Sync}
 import news.pastthefold.auth.SecureRequestService.{AuthCookie, AuthService}
 import news.pastthefold.dao.UserAuthDAO
@@ -18,7 +18,7 @@ import scala.collection.mutable
 object Mocks {
 
   class MockUserAuthDAO extends UserAuthDAO[IO] {
-    override def create(email: String): IO[User] = ???
+    override def create(email: String, encryptedPassword: (Salt, PasswordHash[HardenedSCrypt])): EitherT[IO, UserAuthDaoError, User] = ???
     override def findByEmail(email: String): IO[Option[User]] = ???
     override def updatePassword(user: User, salt: Salt, passwordHash: PasswordHash[HardenedSCrypt]): IO[User] = ???
     override def put(elem: User): IO[User] = ???
@@ -39,7 +39,10 @@ object Mocks {
                                  ) = new PasswordHashingService[IO] {
     override def hashPassword(password: String): IO[(Salt, PasswordHash[HardenedSCrypt])] =
       IO.apply {
-        (Salt("fake-salt"), PasswordHash(s"hash-of-$password"))
+        (
+          Salt("fake-salt"),
+          PasswordHash(s"hash-of-$password")
+        )
       }
 
     override def verifyPassword(salt: Salt, password: UntrustedPassword, passwordHash: PasswordHash[HardenedSCrypt]): IO[VerificationStatus] =

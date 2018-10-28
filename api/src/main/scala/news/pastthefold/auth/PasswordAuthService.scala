@@ -5,19 +5,19 @@ import cats.effect.Effect
 import cats.implicits._
 import news.pastthefold.auth.PasswordHashingService.EncryptedPassword
 import news.pastthefold.dao.UserAuthDAO
-import news.pastthefold.http.{LoginForm, UpdatePasswordForm}
-import news.pastthefold.model.{Salt, UntrustedPassword, User}
+import news.pastthefold.http.{CreateAccountForm, LoginForm, UpdatePasswordForm}
+import news.pastthefold.model.{Salt, User}
 import org.http4s.Response
-import tsec.common.{VerificationFailed, VerificationStatus, Verified}
+import tsec.common.{VerificationFailed, Verified}
 import tsec.passwordhashers.PasswordHash
 import tsec.passwordhashers.jca._
 
 trait PasswordAuthService[F[_]] {
-  def createPassword(password: String): F[Either[CreatePasswordError, EncryptedPassword]]
+  def createAccount(form: CreateAccountForm): F[Either[AuthError, User]]
 
-  def updatePassword(form: UpdatePasswordForm): F[Either[UpdatePasswordError, User]]
+  def updatePassword(form: UpdatePasswordForm): F[Either[AuthError, User]]
 
-  def login(form: LoginForm): F[Either[LoginError, User]]
+  def login(form: LoginForm): F[Either[AuthError, User]]
 
   def embedAuth(user: User, response: Response[F]): F[Response[F]]
 }
@@ -37,28 +37,42 @@ class PasswordAuthServiceImpl[F[_] : Effect](
                                               secureRequestService: SecureRequestService[F]
                                             ) extends PasswordAuthService[F] {
 
+  override def createAccount(form: CreateAccountForm): F[Either[AuthError, User]] = {
+    val eitherT = for {
+      encryptedPassword <- createPassword(form.password.value)
+
+      // TODO: More specific error mapping
+      user <- userAuthDAO.create(form.email, encryptedPassword)
+          .leftMap[AuthError](_ => AccountDuplicateError)
+
+    } yield user
+
+    eitherT.value
+  }
+
   private val minPasswordLength = 8
 
-  override def createPassword(password: String): F[Either[CreatePasswordError, EncryptedPassword]] =
-    Either.cond(
-      passwordRequirements(password),
-      passwordEncryptionService.hashPassword(password),
-      CreatePasswordError()
-    ).sequence
+  def createPassword(password: String): EitherT[F, AuthError, EncryptedPassword] =
+    EitherT(
+      Either.cond[AuthError, F[EncryptedPassword]](
+        passwordRequirements(password),
+        passwordEncryptionService.hashPassword(password),
+        PasswordRequirementsError
+      ).sequence
+    )
 
-  override def updatePassword(form: UpdatePasswordForm): F[Either[UpdatePasswordError, User]] = {
+  override def updatePassword(form: UpdatePasswordForm): F[Either[AuthError, User]] = {
 
-    val loginWithOldCredentials: EitherT[F, UpdatePasswordError, User] =
+    val loginWithOldCredentials: EitherT[F, AuthError, User] =
       EitherT(
         login(form.toLoginForm)
-      ).leftMap(e => InvalidCredentialsError(e))
+      ).leftMap(e => new InvalidCredentialsError(e))
 
-    val encryptNextPassword: EitherT[F, UpdatePasswordError, EncryptedPassword] =
-      EitherT(
-        createPassword(form.nextPassword)
-      ).leftMap(_ => PasswordRequirementsError())
+    val encryptNextPassword: EitherT[F, AuthError, EncryptedPassword] =
+      createPassword(form.nextPassword)
+        .leftMap(_ => PasswordRequirementsError)
 
-    def updatePassword(user: User, salt: Salt, passwordHash: PasswordHash[HardenedSCrypt]): EitherT[F, UpdatePasswordError, User] =
+    def updatePassword(user: User, salt: Salt, passwordHash: PasswordHash[HardenedSCrypt]): EitherT[F, AuthError, User] =
       EitherT(
         userAuthDAO
           .updatePassword(user, salt, passwordHash)
@@ -70,8 +84,8 @@ class PasswordAuthServiceImpl[F[_] : Effect](
     }.flatten.value
   }
 
-  override def login(form: LoginForm): F[Either[LoginError, User]] = {
-    def verify(user: User): F[Either[LoginError, User]] =
+  override def login(form: LoginForm): F[Either[AuthError, User]] = {
+    def verify(user: User): F[Either[AuthError, User]] =
       for {
         pwStatus <- passwordEncryptionService.verifyPassword(
           user.salt,
@@ -84,12 +98,10 @@ class PasswordAuthServiceImpl[F[_] : Effect](
 
     userAuthDAO
       .findByEmail(form.email)
-      .flatMap(userOpt =>
-        userOpt match {
-          case Some(user) => verify(user)
-          case None => Effect[F].pure(Left(EmailNotFoundError))
-        }
-      )
+      .flatMap {
+        case Some(user) => verify(user)
+        case None => Effect[F].pure(Left(EmailNotFoundError))
+      }
   }
 
   override def embedAuth(user: User, response: Response[F]): F[Response[F]] =

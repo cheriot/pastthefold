@@ -3,7 +3,7 @@ package news.pastthefold.http
 import cats.effect._
 import io.circe.Json
 import news.pastthefold.auth.SecureRequestService
-import news.pastthefold.auth.SecureRequestService.{AuthService, UserService}
+import news.pastthefold.auth.SecureRequestService.{UserService}
 import news.pastthefold.graphql.GraphQLExecutor
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
