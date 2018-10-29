@@ -33,9 +33,11 @@ class AuthHttpRoutes[F[_] : Effect](
   }
 
   def unauthenticatedError(loginError: HttpStatusError): F[Response[F]] =
-    Sync[F].pure(Response(status = loginError.status))
+    Response[F](status = loginError.status)
+      .withBody(s"Error: $loginError")
 
   def endpoints(): UserService[F] = UserAwareService {
+
     case awareReq@POST -> Root / "create" asAware _ =>
       awareReq.request.decode[UrlForm] { urlForm =>
         extractNewAccountForm(urlForm)
@@ -70,7 +72,7 @@ object AuthHttpRoutes {
                                 passwordAuthService: PasswordAuthService[F],
                                 secureRequestService: SecureRequestService[F]
                               ): HttpService[F] =
-    secureRequestService.liftUserAware(
+    secureRequestService.liftUserAwareWithFallThrough(
       new AuthHttpRoutes[F](passwordAuthService).endpoints()
     )
 }

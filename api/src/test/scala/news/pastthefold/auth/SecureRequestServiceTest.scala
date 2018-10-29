@@ -43,7 +43,7 @@ object SecureRequestServiceTest extends TestSuite {
       val response = instance.embedAuth(user, Response(Ok)).unsafeRunSync()
       val authCookie = response.cookies(0)
       val request = Request[IO]().addCookie(authCookie)
-      val Some(securedRequest) = instance.Auth.authenticator.extractAndValidate(request).value.unsafeRunSync()
+      val Some(securedRequest) = instance.auth.authenticator.extractAndValidate(request).value.unsafeRunSync()
       assert(securedRequest.identity.id == user.id)
     }
 
@@ -53,7 +53,7 @@ object SecureRequestServiceTest extends TestSuite {
       val response = instanceA.embedAuth(user, Response(Ok)).unsafeRunSync()
       val authCookie = response.cookies(0)
       val request = Request[IO]().addCookie(authCookie)
-      val Some(securedRequest) = instanceB.Auth.authenticator.extractAndValidate(request).value.unsafeRunSync()
+      val Some(securedRequest) = instanceB.auth.authenticator.extractAndValidate(request).value.unsafeRunSync()
       assert(securedRequest.identity.id == user.id)
     }
   }

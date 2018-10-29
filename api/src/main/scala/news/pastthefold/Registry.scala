@@ -14,7 +14,7 @@ class Registry {
   // TODO non-memory
   private lazy val userAuthDAO = new MemoryUserAuthDAO[IO]
 
-  private lazy val secureRequestService = {
+  lazy val secureRequestService = {
     val key = Config.cookieSigningKey
     // TODO non-memory
     val cookieBackingStore = SessionDAO[IO]()
@@ -40,7 +40,7 @@ class Registry {
     AuthHttpRoutes.endpoints(passwordAuthService, secureRequestService)
   }
 
-  val allHttpEndpoints: HttpService[IO] = graphqlEndpoints combineK authEndpoints
+  val allHttpEndpoints: HttpService[IO] = authEndpoints combineK graphqlEndpoints
 }
 
 object Registry {

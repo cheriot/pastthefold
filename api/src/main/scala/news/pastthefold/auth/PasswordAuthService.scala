@@ -108,5 +108,5 @@ class PasswordAuthServiceImpl[F[_] : Effect](
     secureRequestService.embedAuth(user, response)
 
   private def passwordRequirements(password: String): Boolean =
-    password.length > minPasswordLength
+    password.length >= minPasswordLength
 }

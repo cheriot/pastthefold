@@ -27,8 +27,6 @@ class GraphQLHttpRoutes extends Http4sDsl[IO] {
       .filter(_ == str)
       .isDefined
 
-  // if contentType(request, "application/json")
-
   /** Extend to fully implement https://graphql.org/learn/serving-over-http/#http-methods-headers-and-body */
   def endpoints(graphQLExecutor: GraphQLExecutor): UserService[IO] = UserAwareService {
     case GET -> Root / "graphql" :? QueryParamMatcher(query) asAware _ =>
@@ -54,7 +52,7 @@ object GraphQLHttpRoutes {
                  graphQLExecutor: GraphQLExecutor,
                  secureRequestService: SecureRequestService[IO]
                ): HttpService[IO] =
-    secureRequestService.liftUserAware(
+    secureRequestService.liftUserAwareWithFallThrough(
       new GraphQLHttpRoutes().endpoints(graphQLExecutor)
     )
 }
